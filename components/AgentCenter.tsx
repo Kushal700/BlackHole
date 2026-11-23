@@ -10,8 +10,10 @@ import {
   Check,
   CheckCircle2,
   Circle,
+  Code2,
   Clock3,
   Gauge,
+  Gamepad2,
   History,
   Lightbulb,
   LoaderCircle,
@@ -26,7 +28,6 @@ import {
   Trash2,
   Workflow,
   X,
-  Zap,
 } from "lucide-react";
 import { PageHeader, formatDate } from "@/components/ui";
 import { RichMarkdown } from "@/components/RichMarkdown";
@@ -45,6 +46,12 @@ interface AgentData {
   skillScores: Array<SkillScore & { title: string }>;
   projects: Project[];
   activeProjectId?: string;
+  robloxPro: {
+    installed: number;
+    total: number;
+    ready: boolean;
+    missing: string[];
+  };
   stats: {
     totalRuns: number;
     completedRuns: number;
@@ -113,6 +120,9 @@ export function AgentCenter() {
   );
   const activeProject = data?.projects.find(
     (project) => project.id === data.activeProjectId,
+  );
+  const robloxMode = Boolean(
+    selected?.robloxProfile || /roblox/i.test(activeProject?.name || ""),
   );
 
   async function plan() {
@@ -207,8 +217,12 @@ export function AgentCenter() {
     <div>
       <PageHeader
         eyebrow="Local intelligence"
-        title="BlackHole Agent"
-        description="A supervised agent that recalls project knowledge, activates skills, executes approved actions, verifies outcomes, and learns from your feedback."
+        title={robloxMode ? "BlackHole · Roblox Dev Pro" : "BlackHole Agent"}
+        description={
+          robloxMode
+            ? "A supervised Roblox production lead that coordinates design, typed Luau, server authority, art, cross-platform UX, QA, and learning."
+            : "A supervised agent that recalls project knowledge, activates skills, executes approved actions, verifies outcomes, and learns from your feedback."
+        }
         actions={
           <Link href="/cockpit" className="btn-ghost text-sm">
             <Gauge size={15} /> Project Cockpit
@@ -225,7 +239,7 @@ export function AgentCenter() {
                 <h2 className="font-display mt-2 text-3xl">What should we solve?</h2>
               </div>
               <span className="inline-flex items-center gap-2 rounded-full border border-emerald-300/15 bg-emerald-300/[.06] px-3 py-2 text-xs text-emerald-200">
-                <ShieldCheck size={14} /> Supervised mode
+                <ShieldCheck size={14} /> {robloxMode ? "Roblox Pro · supervised" : "Supervised mode"}
               </span>
             </div>
             <textarea
@@ -278,18 +292,58 @@ export function AgentCenter() {
             <div className="absolute inset-x-4 bottom-5 text-center">
               <div className="text-sm font-medium text-amber-100">{displayState}</div>
               <div className="mt-1 text-xs text-[#736b60]">
-                {activeProject?.name || "No active project"}
+                {robloxMode
+                  ? `${data.robloxPro.installed}/${data.robloxPro.total} Roblox disciplines online`
+                  : activeProject?.name || "No active project"}
               </div>
             </div>
           </div>
         </div>
       </section>
 
+      {robloxMode && (
+        <section className="panel mb-6 rounded-3xl border-amber-300/10 p-5 md:p-6">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex items-start gap-3">
+              <div className="rounded-2xl border border-amber-300/15 bg-amber-300/[.06] p-3 text-amber-200">
+                <Gamepad2 size={21} />
+              </div>
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h2 className="font-display text-xl text-[#eadfca]">Roblox production brain</h2>
+                  <span className="rounded-full border border-emerald-300/15 px-2.5 py-1 text-[11px] text-emerald-200">
+                    {data.robloxPro.ready ? "Ready" : "Needs setup"}
+                  </span>
+                </div>
+                <p className="mt-1 max-w-2xl text-sm leading-6 text-[#82796c]">
+                  Every plan starts with architecture, server security, and QA, then activates the exact art, gameplay, economy, world, UI, analytics, or tooling specialists it needs.
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2 lg:justify-end">
+              {[
+                "Server authority",
+                "Strict typed Luau",
+                "Phone + PC + gamepad",
+                "Multiplayer QA",
+              ].map((capability) => (
+                <span
+                  key={capability}
+                  className="rounded-full border border-white/[.07] bg-white/[.02] px-3 py-2 text-xs text-[#a69d8e]"
+                >
+                  {capability}
+                </span>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
       <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <Metric icon={<Activity size={16} />} label="Agent runs" value={data.stats.totalRuns} />
         <Metric icon={<Lightbulb size={16} />} label="Lessons learned" value={data.stats.learnedLessons} />
         <Metric icon={<CheckCircle2 size={16} />} label="Rated success" value={data.stats.ratedRuns ? `${data.stats.successRate}%` : "Unrated"} />
-        <Metric icon={<Zap size={16} />} label="Skills strengthened" value={data.stats.strengthenedSkills} />
+        <Metric icon={<Code2 size={16} />} label="Roblox stack" value={`${data.robloxPro.installed}/${data.robloxPro.total}`} />
         <Metric icon={<Workflow size={16} />} label="Playbooks" value={data.stats.playbooks} />
       </div>
 
@@ -344,6 +398,31 @@ export function AgentCenter() {
                     </div>
                   ))}
                 </div>
+
+                {selected.robloxProfile && (
+                  <details className="mt-5 rounded-2xl border border-amber-300/10 bg-amber-300/[.025] p-4">
+                    <summary className="cursor-pointer list-none text-sm font-medium text-amber-100">
+                      <span className="inline-flex items-center gap-2">
+                        <Gamepad2 size={16} />
+                        {selected.robloxProfile.specialistLanes.length} Roblox specialists routed into this plan
+                      </span>
+                    </summary>
+                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                      {selected.robloxProfile.specialistLanes.map((lane) => (
+                        <div
+                          key={lane.id}
+                          className="rounded-xl border border-white/[.05] bg-black/15 p-3"
+                        >
+                          <div className="flex items-center justify-between gap-2 text-sm text-[#d9cfbd]">
+                            <span>{lane.title}</span>
+                            <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${lane.skillId ? "bg-emerald-300" : "bg-red-300"}`} />
+                          </div>
+                          <p className="mt-1.5 text-xs leading-5 text-[#756e62]">{lane.role}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </details>
+                )}
 
                 {Boolean(selected.appliedLessons?.length) && (
                   <div className="mt-5 rounded-2xl border border-violet-300/10 bg-violet-300/[.025] p-4">

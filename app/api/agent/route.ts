@@ -4,7 +4,9 @@ import { guard } from "@/lib/http";
 import { parseActionRequest } from "@/lib/actions";
 import {
   buildAgentRun,
+  buildRobloxProProfile,
   filterSkillPool,
+  getRobloxProReadiness,
   rankLearningRecords,
   rankPlaybooks,
   rerankSkillsWithExperience,
@@ -22,6 +24,7 @@ export async function GET() {
   const denied = await guard();
   if (denied) return denied;
   const store = await readStore();
+  const allSkills = store.memories.filter(isSkillMemory);
   const runs = (store.agentRuns || []).slice(0, 30);
   const learningRecords = (store.learningRecords || []).slice(0, 40);
   const playbooks = (store.agentPlaybooks || []).slice(0, 30);
@@ -53,6 +56,7 @@ export async function GET() {
       strengthenedSkills: skillScores.length,
       playbooks: playbooks.length,
     },
+    robloxPro: getRobloxProReadiness(allSkills),
   });
 }
 
@@ -74,6 +78,7 @@ export async function POST(request: NextRequest) {
   const projectSignal = `${project?.name || ""} ${project?.summary || ""} ${project?.goal || ""} ${parsed.data.goal}`;
   const allSkills = store.memories.filter(isSkillMemory);
   const relevantSkillPool = filterSkillPool(projectSignal, allSkills);
+  const robloxProfile = buildRobloxProProfile(projectSignal, relevantSkillPool);
   const rankedSkills = rerankSkillsWithExperience(
     rankMemoryChunks(parsed.data.goal, relevantSkillPool, 8),
     store.skillScores || [],
@@ -101,6 +106,7 @@ export async function POST(request: NextRequest) {
       store.agentPlaybooks || [],
       projectId,
     ),
+    robloxProfile,
   });
   await createAgentRun(run);
   return NextResponse.json(run, { status: 201 });

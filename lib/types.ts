@@ -171,6 +171,29 @@ export interface AgentAppliedPlaybook extends AgentPlaybook {
   relevance: number;
 }
 
+export interface RobloxSpecialistLane {
+  id: string;
+  title: string;
+  skillSlug: string;
+  skillId?: string;
+  role: string;
+  reason: string;
+  required: boolean;
+}
+
+export interface RobloxProProfile {
+  mode: "roblox_game_dev_pro";
+  title: string;
+  summary: string;
+  experiencePillars: string[];
+  specialistLanes: RobloxSpecialistLane[];
+  ownershipRules: string[];
+  implementationOrder: string[];
+  acceptanceCriteria: string[];
+  verificationGates: string[];
+  releaseBlockers: string[];
+}
+
 export interface AgentRun {
   id: string;
   goal: string;
@@ -181,6 +204,7 @@ export interface AgentRun {
   evidence: AgentEvidence[];
   appliedLessons?: AgentAppliedLesson[];
   appliedPlaybooks?: AgentAppliedPlaybook[];
+  robloxProfile?: RobloxProProfile;
   proposedAction?: ActionProposal;
   result?: string;
   verification?: string;

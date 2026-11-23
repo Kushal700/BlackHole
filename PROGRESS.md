@@ -1,6 +1,6 @@
 # BlackHole progress
 
-Last updated: 2026-11-22
+Last updated: 2026-11-23
 
 ## Completed
 
@@ -52,6 +52,11 @@ Last updated: 2026-11-22
 - [x] Durable supervised playbooks promoted from rated runs with preserved workflow steps and skills
 - [x] Project-scoped semantic playbook matching with visible provenance, confidence, and usage counts
 - [x] Reversible playbook deletion and full create → promote → reuse integration verification
+- [x] Roblox Game Dev Pro operating mode with deterministic 14-discipline specialist routing
+- [x] Mandatory typed-Luau architecture, server-security, and multiplayer-QA guardrails on every Roblox plan
+- [x] Structured Roblox production briefs with pillars, authority contracts, implementation order, definitions of done, verification ladders, and release blockers
+- [x] Compact Roblox Pro readiness and per-run specialist routing UI
+- [x] Unit tests for specialist routing, skill activation, and production-brief generation
 - [x] Type check, lint, and production build validation
 
 ## Deliberate deployment follow-ups

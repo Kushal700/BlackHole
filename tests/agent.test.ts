@@ -1,12 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
   buildAgentRun,
+  buildGroundedAgentResult,
+  buildRobloxProProfile,
   calculateSkillScore,
   createPlaybookFromRun,
   filterSkillPool,
   rankLearningRecords,
   rankPlaybooks,
   rerankSkillsWithExperience,
+  routeRobloxSpecialists,
 } from "@/lib/agent";
 import type { LearningRecord, Memory, SkillScore } from "@/lib/types";
 
@@ -65,6 +68,70 @@ describe("BlackHole agent", () => {
     const selected = filterSkillPool("Roblox Action RPG", skills);
 
     expect(selected.map((item) => item.id)).toEqual(["roblox"]);
+  });
+
+  it("always routes Roblox work through architecture, security, and QA", () => {
+    const skills = [
+      memory("direction", "Skill · Roblox Action RPG Dev", ["skill", "roblox"]),
+      memory("architecture", "Skill · Roblox Luau Architecture", ["skill", "roblox"]),
+      memory("security", "Skill · Roblox Networking Security", ["skill", "roblox"]),
+      memory("qa", "Skill · Roblox QA LiveOps", ["skill", "roblox"]),
+      memory("vfx", "Skill · Roblox VFX Lighting", ["skill", "roblox"]),
+      memory("video", "Skill · YouTube Packaging", ["skill"]),
+    ];
+    const lanes = routeRobloxSpecialists(
+      "Build a Roblox boss telegraph with VFX",
+      skills,
+    );
+
+    expect(lanes.map((lane) => lane.id)).toEqual([
+      "game-direction",
+      "architecture",
+      "security",
+      "qa",
+      "vfx",
+    ]);
+    expect(lanes.every((lane) => lane.skillId)).toBe(true);
+  });
+
+  it("turns Roblox runs into production briefs with hard release gates", () => {
+    const skills = [
+      memory("direction", "Skill · Roblox Action RPG Dev", ["skill", "roblox"]),
+      memory("architecture", "Skill · Roblox Luau Architecture", ["skill", "roblox"]),
+      memory("security", "Skill · Roblox Networking Security", ["skill", "roblox"]),
+      memory("qa", "Skill · Roblox QA LiveOps", ["skill", "roblox"]),
+    ];
+    const profile = buildRobloxProProfile(
+      "Roblox: build a secure combat system",
+      skills,
+    );
+    const run = buildAgentRun({
+      id: "run-pro",
+      timestamp,
+      goal: "Build a secure Roblox combat system",
+      projectId: "project-roblox",
+      ranked: [
+        {
+          memory: skills[0],
+          heading: "Combat",
+          lineStart: 1,
+          content: skills[0].content,
+          score: 0.8,
+        },
+      ],
+      robloxProfile: profile,
+    });
+    const result = buildGroundedAgentResult(run);
+
+    expect(run.skillIds).toEqual([
+      "direction",
+      "architecture",
+      "security",
+      "qa",
+    ]);
+    expect(result).toContain("# Roblox production brief");
+    expect(result).toContain("## Authority contract");
+    expect(result).toContain("## Release blockers");
   });
 
   it("recalls project lessons and carries written corrections forward", () => {

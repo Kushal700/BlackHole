@@ -30,6 +30,8 @@ BlackHole is a private, AI-powered second brain built around a cinematic 3D know
 - Visible lesson provenance and a reversible “forget run” control that rebuilds confidence from retained history
 - Supervised playbooks: promote successful runs into reusable workflows that are automatically matched to similar project goals
 - Playbook provenance, usage counts, confidence, deletion, and project-scoped semantic matching
+- Roblox Game Dev Pro mode with deterministic specialist routing across 14 disciplines, mandatory architecture/security/QA guardrails, and project-aware craft activation
+- Production-grade Roblox briefs with experience pillars, authority contracts, implementation order, cross-platform acceptance criteria, multiplayer verification ladders, and hard release blockers
 
 ## BlackHole Agent
 
@@ -38,6 +40,8 @@ Open `http://localhost:3000/agent` to give BlackHole an objective. The agent rec
 Agent learning is local, inspectable, and reversible. It records evidence and outcomes rather than retraining a hidden model. Similar future objectives retrieve prior project lessons and corrections, while skill ratings provide a bounded ranking signal that never replaces semantic relevance. External publishing, Studio edits, code changes, and destructive actions remain unavailable unless a future integration exposes them through an explicit confirmation gate.
 
 Runs rated as worked or partial can be saved as playbooks. A playbook preserves the run's verified workflow and skill stack, then appears as an explicit reusable workflow when a related objective is planned. Playbooks never bypass the approval gate.
+
+When the active project or objective is Roblox-related, the agent enters Roblox Game Dev Pro mode. Every run is coordinated by the game-direction, strict Luau architecture, networking/security, and QA specialists; UI, VFX, animation, 3D, economy, world, narrative, analytics, accessibility, and Studio-tooling specialists are added when the objective requires them. Approval produces a structured production brief rather than a generic answer, and no plan is considered release-ready while authority, recovery, input parity, readability, or measured performance gates are failing.
 
 ## Quick start on Windows
 
