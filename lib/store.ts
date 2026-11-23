@@ -9,17 +9,26 @@ import type {
   Project,
   StoreData,
   Task,
+  ActionRecord,
 } from "@/lib/types";
-import { cosineSimilarity, createEmbedding, localEmbedding, rankMemories } from "@/lib/semantic";
+import {
+  cosineSimilarity,
+  createEmbedding,
+  localEmbedding,
+  rankMemories,
+} from "@/lib/semantic";
 import { readPostgresStore, writePostgresStore } from "@/lib/postgres-state";
 
 const DATA_DIRECTORY = path.join(process.cwd(), "data");
 const DATA_FILE = path.join(DATA_DIRECTORY, "blackhole.json");
+const BACKUP_DIRECTORY = path.join(DATA_DIRECTORY, "backups");
+const BACKUP_RETENTION = 24;
 let writeQueue = Promise.resolve();
 
 const now = "2026-11-22T09:00:00.000Z";
 
 const seed: StoreData = {
+  actions: [],
   projects: [
     {
       id: "project-blackhole",
@@ -177,7 +186,8 @@ const seed: StoreData = {
     {
       id: "task-rule",
       title: "Write citation trust tests",
-      description: "Verify that empty retrieval never produces invented claims.",
+      description:
+        "Verify that empty retrieval never produces invented claims.",
       status: "done",
       priority: "high",
       projectId: "project-blackhole",
@@ -191,9 +201,14 @@ const seed: StoreData = {
 function hydrate(input: StoreData): StoreData {
   return {
     ...input,
+    actions: input.actions || [],
     memories: input.memories.map((memory) => ({
       ...memory,
-      embedding: memory.embedding || localEmbedding(`${memory.title} ${memory.content} ${memory.tags.join(" ")}`),
+      embedding:
+        memory.embedding ||
+        localEmbedding(
+          `${memory.title} ${memory.content} ${memory.tags.join(" ")}`,
+        ),
     })),
   };
 }
@@ -203,35 +218,159 @@ async function ensureStore() {
   try {
     await fs.access(DATA_FILE);
   } catch {
-    await fs.writeFile(DATA_FILE, JSON.stringify(hydrate(seed), null, 2), "utf8");
+    await fs.writeFile(
+      DATA_FILE,
+      JSON.stringify(hydrate(seed), null, 2),
+      "utf8",
+    );
+  }
+}
+
+function backupFilename(label: string) {
+  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+  return `${label.replace(/[^a-z0-9-]/gi, "-").toLowerCase()}-${timestamp}.json`;
+}
+
+async function pruneBackups() {
+  const entries = (
+    await fs.readdir(BACKUP_DIRECTORY, { withFileTypes: true })
+  ).filter((entry) => entry.isFile() && entry.name.endsWith(".json"));
+  const dated = await Promise.all(
+    entries.map(async (entry) => ({
+      entry,
+      modified: (await fs.stat(path.join(BACKUP_DIRECTORY, entry.name)))
+        .mtimeMs,
+    })),
+  );
+  dated.sort((left, right) => right.modified - left.modified);
+  await Promise.all(
+    dated
+      .slice(BACKUP_RETENTION)
+      .map(({ entry }) => fs.unlink(path.join(BACKUP_DIRECTORY, entry.name))),
+  );
+}
+
+async function writeBackupSnapshot(data: StoreData, label: string) {
+  await fs.mkdir(BACKUP_DIRECTORY, { recursive: true });
+  const filename = backupFilename(label);
+  await fs.writeFile(
+    path.join(BACKUP_DIRECTORY, filename),
+    JSON.stringify(data, null, 2),
+    "utf8",
+  );
+  await pruneBackups();
+  return filename;
+}
+
+async function ensureDailyBackup() {
+  await fs.mkdir(BACKUP_DIRECTORY, { recursive: true });
+  const prefix = `auto-${new Date().toISOString().slice(0, 10)}`;
+  const entries = await fs.readdir(BACKUP_DIRECTORY);
+  if (entries.some((entry) => entry.startsWith(prefix))) return;
+  try {
+    const current = JSON.parse(
+      await fs.readFile(DATA_FILE, "utf8"),
+    ) as StoreData;
+    await writeBackupSnapshot(current, prefix);
+  } catch {
+    /* A brand-new store has nothing to preserve yet. */
   }
 }
 
 export async function readStore() {
-  if (process.env.DATABASE_URL) return hydrate(await readPostgresStore(hydrate(seed)));
+  if (process.env.DATABASE_URL)
+    return hydrate(await readPostgresStore(hydrate(seed)));
   await ensureStore();
   return hydrate(JSON.parse(await fs.readFile(DATA_FILE, "utf8")) as StoreData);
 }
 
 export async function writeStore(data: StoreData) {
-  writeQueue = writeQueue.then(async () => {
-    if (process.env.DATABASE_URL) {
-      await writePostgresStore(data);
-      return;
-    }
-    await ensureStore();
-    const temporary = `${DATA_FILE}.tmp`;
-    await fs.writeFile(temporary, JSON.stringify(data, null, 2), "utf8");
-    await fs.rename(temporary, DATA_FILE);
-  });
+  writeQueue = writeQueue
+    .catch(() => undefined)
+    .then(async () => {
+      if (process.env.DATABASE_URL) {
+        await writePostgresStore(data);
+        return;
+      }
+      await ensureStore();
+      await ensureDailyBackup();
+      const temporary = `${DATA_FILE}.tmp`;
+      await fs.writeFile(temporary, JSON.stringify(data, null, 2), "utf8");
+      await fs.rename(temporary, DATA_FILE);
+    });
   await writeQueue;
+}
+
+export async function listBackups() {
+  await fs.mkdir(BACKUP_DIRECTORY, { recursive: true });
+  const entries = await fs.readdir(BACKUP_DIRECTORY, { withFileTypes: true });
+  const backups = await Promise.all(
+    entries
+      .filter((entry) => entry.isFile() && entry.name.endsWith(".json"))
+      .map(async (entry) => {
+        const stat = await fs.stat(path.join(BACKUP_DIRECTORY, entry.name));
+        return {
+          filename: entry.name,
+          size: stat.size,
+          createdAt: stat.mtime.toISOString(),
+          automatic: entry.name.startsWith("auto-"),
+        };
+      }),
+  );
+  return backups.sort((left, right) =>
+    right.createdAt.localeCompare(left.createdAt),
+  );
+}
+
+export async function createBackup(label = "manual") {
+  const data = await readStore();
+  const filename = await writeBackupSnapshot(data, label);
+  return (await listBackups()).find((backup) => backup.filename === filename)!;
+}
+
+export async function previewBackup(filename: string) {
+  if (path.basename(filename) !== filename || !filename.endsWith(".json"))
+    throw new Error("Invalid backup filename.");
+  const data = JSON.parse(
+    await fs.readFile(path.join(BACKUP_DIRECTORY, filename), "utf8"),
+  ) as StoreData;
+  if (
+    !Array.isArray(data.memories) ||
+    !Array.isArray(data.projects) ||
+    !Array.isArray(data.tasks) ||
+    !Array.isArray(data.connections)
+  )
+    throw new Error("Backup is not a valid BlackHole store.");
+  return {
+    filename,
+    memories: data.memories.length,
+    projects: data.projects.length,
+    tasks: data.tasks.length,
+    connections: data.connections.length,
+    actions: data.actions?.length || 0,
+  };
+}
+
+export async function restoreBackup(filename: string) {
+  const preview = await previewBackup(filename);
+  const safetyBackup = await createBackup("before-restore");
+  const data = JSON.parse(
+    await fs.readFile(path.join(BACKUP_DIRECTORY, filename), "utf8"),
+  ) as StoreData;
+  await writeStore(hydrate(data));
+  return { preview, safetyBackup: safetyBackup.filename };
 }
 
 export async function listMemories(query = "", includeArchived = false) {
   const store = await readStore();
-  const filtered = includeArchived ? store.memories : store.memories.filter((memory) => !memory.archived);
-  if (!query.trim()) return filtered.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-  return rankMemories(query, filtered).filter((item) => item.score > 0.08).map((item) => item.memory);
+  const filtered = includeArchived
+    ? store.memories
+    : store.memories.filter((memory) => !memory.archived);
+  if (!query.trim())
+    return filtered.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  return rankMemories(query, filtered)
+    .filter((item) => item.score > 0.08)
+    .map((item) => item.memory);
 }
 
 export async function getMemory(id: string) {
@@ -244,17 +383,33 @@ type MemoryInput = Omit<Memory, "id" | "createdAt" | "updatedAt" | "embedding">;
 export async function createMemory(input: MemoryInput) {
   const store = await readStore();
   const timestamp = new Date().toISOString();
-  const embedding = await createEmbedding(`${input.title}\n${input.content}\n${input.tags.join(" ")}`);
-  const memory: Memory = { ...input, id: randomUUID(), createdAt: timestamp, updatedAt: timestamp, embedding };
+  const embedding = await createEmbedding(
+    `${input.title}\n${input.content}\n${input.tags.join(" ")}`,
+  );
+  const memory: Memory = {
+    ...input,
+    id: randomUUID(),
+    createdAt: timestamp,
+    updatedAt: timestamp,
+    embedding,
+  };
   const candidates = store.memories
-    .map((item) => ({ item, score: cosineSimilarity(embedding, item.embedding || localEmbedding(item.content)) }))
+    .map((item) => ({
+      item,
+      score: cosineSimilarity(
+        embedding,
+        item.embedding || localEmbedding(item.content),
+      ),
+    }))
     .filter(({ score }) => score >= 0.32)
     .sort((a, b) => b.score - a.score)
     .slice(0, 5);
   store.memories.unshift(memory);
   for (const candidate of candidates) {
     const type: ConnectionType =
-      input.projectId && input.projectId === candidate.item.projectId ? "belongs_to_project" : "related_to";
+      input.projectId && input.projectId === candidate.item.projectId
+        ? "belongs_to_project"
+        : "related_to";
     store.connections.push({
       id: randomUUID(),
       sourceId: memory.id,
@@ -273,8 +428,15 @@ export async function updateMemory(id: string, patch: Partial<MemoryInput>) {
   const store = await readStore();
   const index = store.memories.findIndex((memory) => memory.id === id);
   if (index < 0) return undefined;
-  const next = { ...store.memories[index], ...patch, id, updatedAt: new Date().toISOString() };
-  next.embedding = await createEmbedding(`${next.title}\n${next.content}\n${next.tags.join(" ")}`);
+  const next = {
+    ...store.memories[index],
+    ...patch,
+    id,
+    updatedAt: new Date().toISOString(),
+  };
+  next.embedding = await createEmbedding(
+    `${next.title}\n${next.content}\n${next.tags.join(" ")}`,
+  );
   store.memories[index] = next;
   await writeStore(store);
   return next;
@@ -284,16 +446,28 @@ export async function deleteMemory(id: string) {
   const store = await readStore();
   const before = store.memories.length;
   store.memories = store.memories.filter((memory) => memory.id !== id);
-  store.connections = store.connections.filter((item) => item.sourceId !== id && item.targetId !== id);
+  store.connections = store.connections.filter(
+    (item) => item.sourceId !== id && item.targetId !== id,
+  );
   if (store.memories.length === before) return false;
   await writeStore(store);
   return true;
 }
 
-export async function createConnection(sourceId: string, targetId: string, type: ConnectionType) {
+export async function createConnection(
+  sourceId: string,
+  targetId: string,
+  type: ConnectionType,
+) {
   const store = await readStore();
   const connection: Connection = {
-    id: randomUUID(), sourceId, targetId, type, score: 1, automatic: false, createdAt: new Date().toISOString(),
+    id: randomUUID(),
+    sourceId,
+    targetId,
+    type,
+    score: 1,
+    automatic: false,
+    createdAt: new Date().toISOString(),
   };
   store.connections.push(connection);
   await writeStore(store);
@@ -306,10 +480,19 @@ export async function removeConnection(id: string) {
   await writeStore(store);
 }
 
-export async function createProject(input: Pick<Project, "name" | "summary" | "goal">) {
+export async function createProject(
+  input: Pick<Project, "name" | "summary" | "goal">,
+) {
   const store = await readStore();
   const timestamp = new Date().toISOString();
-  const project: Project = { ...input, id: randomUUID(), status: "active", progress: 0, createdAt: timestamp, updatedAt: timestamp };
+  const project: Project = {
+    ...input,
+    id: randomUUID(),
+    status: "active",
+    progress: 0,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  };
   store.projects.unshift(project);
   await writeStore(store);
   return project;
@@ -319,15 +502,27 @@ export async function updateProject(id: string, patch: Partial<Project>) {
   const store = await readStore();
   const index = store.projects.findIndex((item) => item.id === id);
   if (index < 0) return undefined;
-  store.projects[index] = { ...store.projects[index], ...patch, id, updatedAt: new Date().toISOString() };
+  store.projects[index] = {
+    ...store.projects[index],
+    ...patch,
+    id,
+    updatedAt: new Date().toISOString(),
+  };
   await writeStore(store);
   return store.projects[index];
 }
 
-export async function createTask(input: Omit<Task, "id" | "createdAt" | "updatedAt">) {
+export async function createTask(
+  input: Omit<Task, "id" | "createdAt" | "updatedAt">,
+) {
   const store = await readStore();
   const timestamp = new Date().toISOString();
-  const task: Task = { ...input, id: randomUUID(), createdAt: timestamp, updatedAt: timestamp };
+  const task: Task = {
+    ...input,
+    id: randomUUID(),
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  };
   store.tasks.unshift(task);
   await writeStore(store);
   return task;
@@ -337,21 +532,46 @@ export async function updateTask(id: string, patch: Partial<Task>) {
   const store = await readStore();
   const index = store.tasks.findIndex((item) => item.id === id);
   if (index < 0) return undefined;
-  store.tasks[index] = { ...store.tasks[index], ...patch, id, updatedAt: new Date().toISOString() };
+  store.tasks[index] = {
+    ...store.tasks[index],
+    ...patch,
+    id,
+    updatedAt: new Date().toISOString(),
+  };
   await writeStore(store);
   return store.tasks[index];
 }
 
-export async function addImport(record: Omit<ImportRecord, "id" | "createdAt">) {
+export async function addImport(
+  record: Omit<ImportRecord, "id" | "createdAt">,
+) {
   const store = await readStore();
-  const item: ImportRecord = { ...record, id: randomUUID(), createdAt: new Date().toISOString() };
+  const item: ImportRecord = {
+    ...record,
+    id: randomUUID(),
+    createdAt: new Date().toISOString(),
+  };
   store.imports.unshift(item);
   await writeStore(store);
   return item;
 }
 
+export async function recordAction(record: ActionRecord) {
+  const store = await readStore();
+  store.actions = [record, ...(store.actions || [])].slice(0, 250);
+  await writeStore(store);
+  return record;
+}
+
 export async function clearStore() {
-  const empty: StoreData = { memories: [], connections: [], projects: [], tasks: [], imports: [] };
+  const empty: StoreData = {
+    memories: [],
+    connections: [],
+    projects: [],
+    tasks: [],
+    imports: [],
+    actions: [],
+  };
   await writeStore(empty);
 }
 

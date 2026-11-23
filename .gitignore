@@ -37,6 +37,7 @@ yarn-error.log*
 /data/*.tmp
 /data/*.log
 /data/desktop-app-profile/
+/data/backups/
 /generated/
 
 # vercel

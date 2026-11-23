@@ -5,7 +5,8 @@ BlackHole is a private, AI-powered second brain built around a cinematic 3D know
 ## What works
 
 - Persistent memory CRUD, archive, semantic search, tags, categories, sources, and JSON/Markdown export
-- Citation-first AI chat with retrieval-augmented generation and a no-key local fallback
+- Heading-level hybrid retrieval with exact source sections, line references, and a citation-first no-key fallback
+- Confirmation-gated Jarvis actions for tasks, memories, project progress, and library sync, with an audit history
 - Automatic embedding-based connections plus editable connection APIs
 - Interactive Three.js / React Three Fiber universe with real memory stars, clusters, lines, filters, orbit controls, and memory navigation
 - Dashboard, projects, progress, tasks, document importer, import history, settings, and data deletion
@@ -13,8 +14,11 @@ BlackHole is a private, AI-powered second brain built around a cinematic 3D know
 - Server-side password protection with an HTTP-only signed cookie
 - Immediate local JSON persistence and optional PostgreSQL + pgvector persistence
 - Persistent skill memory that mirrors installed Codex skills and their reference guides into the universe
-- Live Obsidian vault sync with note metadata, searchable content, and `[[wikilinks]]` preserved as graph connections
+- Automatic 30-second Obsidian/skill sync with visible health, full-content indexing, and `[[wikilinks]]` preserved as graph connections
 - Filtered Skills & Vault library for browsing skills, detailed references, and vault notes without a crowded all-at-once view
+- Rich Markdown, tables, code blocks, wikilinks, and Mermaid diagrams in memory views
+- Daily and on-demand local backups with restore preview, safety snapshots, and 24-snapshot retention
+- Roblox knowledge clustered into Luau, security, economy, gameplay, 3D, animation, VFX, UI/UX, world, and live-operations domains
 
 ## Quick start on Windows
 
@@ -78,4 +82,4 @@ npm run build
 
 - For private use, set `APP_PASSWORD` and protect the Windows account/disk that stores the local data file.
 - For deployment, use PostgreSQL with TLS, a unique `AUTH_SECRET`, a strong owner password, and platform secret storage.
-- Export before using **Delete everything** in Settings; deletion is permanent.
+- BlackHole creates recoverable snapshots; keep an exported copy outside the project as an additional safeguard.

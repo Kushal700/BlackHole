@@ -74,12 +74,32 @@ export interface ImportRecord {
   createdAt: string;
 }
 
+export type ActionKind = "create_task" | "create_memory" | "update_project_progress" | "sync_library";
+
+export interface ActionProposal {
+  kind: ActionKind;
+  title: string;
+  description: string;
+  risk: "low" | "medium";
+  payload: Record<string, string | number | undefined>;
+}
+
+export interface ActionRecord {
+  id: string;
+  kind: ActionKind;
+  title: string;
+  status: "completed" | "failed";
+  summary: string;
+  createdAt: string;
+}
+
 export interface StoreData {
   memories: Memory[];
   connections: Connection[];
   projects: Project[];
   tasks: Task[];
   imports: ImportRecord[];
+  actions?: ActionRecord[];
 }
 
 export interface ChatCitation {
@@ -87,5 +107,8 @@ export interface ChatCitation {
   title: string;
   category: MemoryCategory;
   excerpt: string;
+  heading?: string;
+  lineStart?: number;
+  source?: string;
+  sourceUrl?: string;
 }
-

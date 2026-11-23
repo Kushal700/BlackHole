@@ -71,3 +71,22 @@ button, a { -webkit-tap-highlight-color: transparent; }
 @media (max-width: 900px) {
   .app-main { padding-left: 0 !important; }
 }
+.rich-markdown { color: #bbb2a1; font-size: .875rem; line-height: 1.85; overflow-wrap: anywhere; }
+.rich-markdown > :first-child { margin-top: 0; }
+.rich-markdown > :last-child { margin-bottom: 0; }
+.rich-markdown h1, .rich-markdown h2, .rich-markdown h3 { color: #eee7da; font-family: var(--font-cormorant), Georgia, serif; line-height: 1.2; margin: 1.8rem 0 .7rem; }
+.rich-markdown h1 { font-size: 1.8rem; } .rich-markdown h2 { font-size: 1.45rem; } .rich-markdown h3 { font-size: 1.2rem; }
+.rich-markdown p, .rich-markdown ul, .rich-markdown ol, .rich-markdown blockquote, .rich-markdown pre, .rich-markdown table { margin: .8rem 0; }
+.rich-markdown ul, .rich-markdown ol { padding-left: 1.35rem; } .rich-markdown ul { list-style: disc; } .rich-markdown ol { list-style: decimal; }
+.rich-markdown li + li { margin-top: .25rem; }
+.rich-markdown a { color: #edc06a; text-decoration: underline; text-decoration-color: rgba(237,192,106,.3); text-underline-offset: 3px; }
+.rich-markdown blockquote { border-left: 2px solid rgba(237,192,106,.35); background: rgba(237,192,106,.035); padding: .7rem 1rem; color: #9c9384; }
+.rich-markdown pre, .rich-code { overflow-x: auto; border: 1px solid rgba(255,255,255,.07); border-radius: .8rem; background: #070706; padding: .9rem 1rem; font-size: .75rem; line-height: 1.65; }
+.rich-markdown :not(pre) > code { border: 1px solid rgba(255,255,255,.06); border-radius: .35rem; background: rgba(255,255,255,.04); padding: .12rem .32rem; color: #e5c891; font-size: .8em; }
+.rich-markdown table { display: block; max-width: 100%; overflow-x: auto; border-collapse: collapse; }
+.rich-markdown th, .rich-markdown td { border: 1px solid rgba(255,255,255,.08); padding: .45rem .65rem; text-align: left; }
+.rich-markdown th { color: #e6d8bd; background: rgba(255,255,255,.03); }
+.rich-mermaid { margin: 1rem 0; overflow-x: auto; border: 1px solid rgba(237,192,106,.1); border-radius: 1rem; background: rgba(0,0,0,.26); padding: 1rem; }
+.rich-mermaid svg { margin: 0 auto; max-width: 100%; height: auto; }
+.rich-markdown-compact { font-size: .8rem; line-height: 1.7; }
+.rich-markdown-compact h1 { font-size: 1.35rem; } .rich-markdown-compact h2 { font-size: 1.15rem; } .rich-markdown-compact h3 { font-size: 1rem; }

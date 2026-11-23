@@ -2,24 +2,28 @@ import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 import { z } from "zod";
 import { guard } from "@/lib/http";
-import { createEmbedding, rankMemories } from "@/lib/semantic";
+import { rankMemoryChunks } from "@/lib/semantic";
 import { readStore } from "@/lib/store";
+import { parseActionRequest } from "@/lib/actions";
 
 export async function POST(request: NextRequest) {
   const denied = await guard();
   if (denied) return denied;
   const parsed = z.object({ message: z.string().min(1).max(12000) }).safeParse(await request.json());
   if (!parsed.success) return NextResponse.json({ error: "A message is required" }, { status: 400 });
+  const proposedAction = parseActionRequest(parsed.data.message);
+  if (proposedAction) return NextResponse.json({ answer: "I can do that. Review the proposed action below before I change anything.", citations: [], grounded: true, proposedAction });
   const store = await readStore();
-  const embedding = await createEmbedding(parsed.data.message);
-  const ranked = rankMemories(parsed.data.message, store.memories, embedding)
-    .filter((item) => item.score > 0.1)
-    .slice(0, 6);
-  const citations = ranked.map(({ memory }) => ({
+  const ranked = rankMemoryChunks(parsed.data.message, store.memories, 8);
+  const citations = ranked.map(({ memory, heading, lineStart, content }) => ({
     id: memory.id,
     title: memory.title,
     category: memory.category,
-    excerpt: memory.content.slice(0, 180),
+    heading,
+    lineStart,
+    excerpt: content.slice(0, 220),
+    source: memory.source,
+    sourceUrl: memory.sourceUrl,
   }));
 
   if (!ranked.length) {
@@ -30,8 +34,8 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  const context = ranked.map(({ memory }, index) =>
-    `[${index + 1}] ${memory.title} (${memory.category}, ${memory.createdAt.slice(0, 10)})\n${memory.content}`
+  const context = ranked.map(({ memory, heading, lineStart, content }, index) =>
+    `[${index + 1}] ${memory.title} > ${heading} (line ${lineStart}; ${memory.category}; ${memory.createdAt.slice(0, 10)})\n${content}`
   ).join("\n\n");
 
   if (process.env.OPENAI_API_KEY) {
@@ -51,9 +55,8 @@ export async function POST(request: NextRequest) {
 
   const answer = [
     `Here’s what your saved knowledge says about “${parsed.data.message}”:`,
-    ...ranked.slice(0, 3).map(({ memory }, index) => `${index + 1}. **${memory.title}** — ${memory.content.slice(0, 260)}${memory.content.length > 260 ? "…" : ""} [${index + 1}]`),
+    ...ranked.slice(0, 4).map(({ memory, heading, content }, index) => `${index + 1}. **${memory.title} · ${heading}** — ${content.slice(0, 300)}${content.length > 300 ? "…" : ""} [${index + 1}]`),
     "I’m answering only from the memories cited below. Configure an OpenAI key for a more synthesized response.",
   ].join("\n\n");
   return NextResponse.json({ answer, citations, grounded: true });
 }
-

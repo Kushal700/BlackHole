@@ -21,6 +21,13 @@ Last updated: 2026-11-22
 - [x] Owner password authentication and signed HTTP-only sessions
 - [x] Server-side API authorization and user-controlled data deletion
 - [x] Unit tests for semantic retrieval
+- [x] Heading-level hybrid retrieval with precise section and line citations
+- [x] Confirmation-gated local Jarvis actions with a persistent audit trail
+- [x] Automatic skill/vault sync with status, concurrency protection, and full-content indexing
+- [x] Rich Markdown, GFM, Obsidian wikilink, and Mermaid rendering
+- [x] Domain-aware Roblox universe clusters and dedicated vault/Roblox filters
+- [x] Automatic and manual backups with restore preview, safety copy, and retention
+- [x] Unit tests for chunk retrieval and Jarvis action parsing
 - [x] Quiet one-click Windows launcher with Desktop and Start-menu shortcut support
 - [x] Codex skill-reference ingestion in addition to top-level `SKILL.md` memory
 - [x] Live Obsidian vault ingestion with explicit wikilink graph connections and stale-note cleanup
@@ -33,7 +40,7 @@ Last updated: 2026-11-22
 - [ ] Replace single-owner password login with a production identity provider if multi-user access is needed.
 - [ ] Add object storage for original large document binaries; extracted text is already retained.
 - [ ] Add a pgvector ANN index after choosing one fixed embedding dimension for production.
-- [ ] Add browser-level end-to-end tests to the deployment CI pipeline.
+- [ ] Add browser-level end-to-end tests to the deployment CI pipeline (local visual and API smoke checks are complete).
 
 ## Local setup
 
