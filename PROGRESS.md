@@ -13,7 +13,7 @@ Last updated: 2026-11-22
 - [x] Deterministic local embeddings with optional OpenAI embeddings
 - [x] RAG chat with source citations and explicit insufficient-evidence behavior
 - [x] Automatic semantic connections and manual connection endpoints
-- [x] Cinematic React Three Fiber universe with memory stars and connection lines
+- [x] Cinematic full-screen React Three Fiber universe with memory fragments, constellation lines, orbital arcs, procedural nebulae, and a luminous animated black hole
 - [x] Project pages, progress controls, goals, knowledge, tasks, and summaries
 - [x] Task board with status movement, priority, project, and due dates
 - [x] Markdown, TXT, PDF, DOCX, JSON, CSV, and Obsidian ZIP import

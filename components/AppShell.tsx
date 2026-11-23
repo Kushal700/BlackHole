@@ -57,6 +57,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     router.push(`/memories?q=${encodeURIComponent(search.trim())}`);
   }
   if (auth?.configured && !auth.authenticated) return <Login onSuccess={() => setAuth({ ...auth, authenticated: true })} />;
+  if (pathname === "/universe") {
+    return <div className="min-h-screen overflow-hidden bg-black text-[#f5ecd8]">{children}</div>;
+  }
   return (
     <div className="star-field min-h-screen">
       <aside className={`fixed inset-y-0 left-0 z-50 flex w-[244px] flex-col border-r border-[#e9bd6618] bg-[#0b0a08ee] px-4 py-5 backdrop-blur-xl transition-transform lg:translate-x-0 ${mobileOpen ? "translate-x-0" : "-translate-x-full"}`}>
