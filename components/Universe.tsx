@@ -44,6 +44,21 @@ export function Universe() {
       });
   }, []);
 
+  useEffect(() => {
+    const events = new EventSource("/api/skills/activity/stream");
+    events.onmessage = (event) => {
+      const updates = JSON.parse(event.data) as Memory[];
+      const byId = new Map(updates.map((memory) => [memory.id, memory]));
+      setMemories((items) =>
+        items.map((memory) => byId.get(memory.id) || memory),
+      );
+      setSelected((current) =>
+        current ? byId.get(current.id) || current : current,
+      );
+    };
+    return () => events.close();
+  }, []);
+
   const visible = useMemo(
     () =>
       memories.filter(

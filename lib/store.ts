@@ -10,6 +10,7 @@ import type {
   StoreData,
   Task,
   ActionRecord,
+  StudioConnection,
 } from "@/lib/types";
 import {
   cosineSimilarity,
@@ -19,6 +20,7 @@ import {
 } from "@/lib/semantic";
 import { readPostgresStore, writePostgresStore } from "@/lib/postgres-state";
 import { isSkillMemory } from "@/lib/skill-activity";
+import { publishSkillActivity } from "@/lib/activity-events";
 
 const DATA_DIRECTORY = path.join(process.cwd(), "data");
 const DATA_FILE = path.join(DATA_DIRECTORY, "blackhole.json");
@@ -200,8 +202,17 @@ const seed: StoreData = {
 };
 
 function hydrate(input: StoreData): StoreData {
+  const activeProjectId =
+    input.activeProjectId ||
+    input.projects.find(
+      (project) =>
+        project.id === "project-roblox" ||
+        project.name.toLowerCase().includes("roblox"),
+    )?.id ||
+    input.projects[0]?.id;
   return {
     ...input,
+    activeProjectId,
     actions: input.actions || [],
     memories: input.memories.map((memory) => ({
       ...memory,
@@ -396,6 +407,10 @@ export async function markSkillMemoriesUsed(ids: string[]) {
     return next;
   });
   if (updated.length) await writeStore(store);
+  if (updated.length)
+    publishSkillActivity(
+      updated.map((memory) => withoutEmbedding(memory)) as Memory[],
+    );
   return updated;
 }
 
@@ -531,6 +546,22 @@ export async function updateProject(id: string, patch: Partial<Project>) {
   };
   await writeStore(store);
   return store.projects[index];
+}
+
+export async function setActiveProject(id: string) {
+  const store = await readStore();
+  if (!store.projects.some((project) => project.id === id)) return undefined;
+  store.activeProjectId = id;
+  await writeStore(store);
+  return store.projects.find((project) => project.id === id);
+}
+
+export async function updateStudioConnection(connection: StudioConnection) {
+  const store = await readStore();
+  store.studioConnection = connection;
+  if (connection.projectId) store.activeProjectId = connection.projectId;
+  await writeStore(store);
+  return connection;
 }
 
 export async function createTask(

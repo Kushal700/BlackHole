@@ -49,6 +49,20 @@ export interface Project {
   progress: number;
   createdAt: string;
   updatedAt: string;
+  currentObjective?: string;
+  repositoryUrl?: string;
+  releaseStage?: "prototype" | "vertical_slice" | "alpha" | "beta" | "live";
+}
+
+export interface StudioConnection {
+  studioId: string;
+  name: string;
+  mode: "Edit" | "Play";
+  placeId?: number;
+  universeId?: number;
+  persistedToCloud: boolean;
+  projectId?: string;
+  lastSeenAt: string;
 }
 
 export interface Task {
@@ -100,6 +114,8 @@ export interface StoreData {
   tasks: Task[];
   imports: ImportRecord[];
   actions?: ActionRecord[];
+  activeProjectId?: string;
+  studioConnection?: StudioConnection;
 }
 
 export interface ChatCitation {

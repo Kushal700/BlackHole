@@ -33,6 +33,12 @@ Last updated: 2026-11-22
 - [x] Codex skill-reference ingestion in addition to top-level `SKILL.md` memory
 - [x] Live Obsidian vault ingestion with explicit wikilink graph connections and stale-note cleanup
 - [x] Filtered Skills & Vault library with progressive card loading
+- [x] Project Cockpit with active-project context, objective-aware skill recommendations, execution queue, and release-readiness scoring
+- [x] Live Roblox Studio context linked to the active project without modifying the open place
+- [x] Server-sent skill activity streaming across the Cockpit and knowledge universe
+- [x] Roblox Studio tooling, analytics/experiments, accessibility/localization, and narrative/quest skill packs
+- [x] Browser visual QA for the Cockpit and live active-skill universe beacons
+- [x] Unit tests for Cockpit release-readiness scoring
 - [x] Type check, lint, and production build validation
 
 ## Deliberate deployment follow-ups

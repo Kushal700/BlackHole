@@ -20,6 +20,9 @@ BlackHole is a private, AI-powered second brain built around a cinematic 3D know
 - Daily and on-demand local backups with restore preview, safety snapshots, and 24-snapshot retention
 - Roblox knowledge clustered into Luau, security, economy, gameplay, 3D, animation, VFX, UI/UX, world, and live-operations domains
 - Live skill-usage telemetry: retrieved or opened skills pulse with bright halos in the universe for 15 minutes, with usage counts and a local integration API
+- Project Cockpit with active objectives, release readiness, recommended skills, task queue, repository context, and live Studio status
+- Server-sent skill activity updates so the Cockpit and universe react immediately without a page refresh
+- Focused Roblox production knowledge for Studio tooling, analytics/experiments, accessibility/localization, and narrative/quest design
 
 ## Quick start on Windows
 
