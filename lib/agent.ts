@@ -1,9 +1,14 @@
 import { randomUUID } from "node:crypto";
-import type { RankedMemoryChunk } from "@/lib/semantic";
+import {
+  cosineSimilarity,
+  localEmbedding,
+  type RankedMemoryChunk,
+} from "@/lib/semantic";
 import { isSkillMemory } from "@/lib/skill-activity";
 import type {
   ActionProposal,
   AgentEvidence,
+  AgentAppliedLesson,
   AgentOutcome,
   AgentRun,
   LearningRecord,
@@ -25,11 +30,79 @@ export function filterSkillPool(signal: string, skills: Memory[]) {
   );
 }
 
+function words(value: string) {
+  return new Set(
+    value
+      .toLowerCase()
+      .match(/[a-z0-9]{3,}/g)
+      ?.filter((word) => !["the", "and", "for", "with", "that"].includes(word)) || [],
+  );
+}
+
+export function rankLearningRecords(
+  goal: string,
+  records: LearningRecord[],
+  projectId?: string,
+  limit = 3,
+): AgentAppliedLesson[] {
+  const queryWords = words(goal);
+  const queryVector = localEmbedding(goal);
+  return records
+    .filter((record) => !projectId || record.projectId === projectId)
+    .map((record) => {
+      const text = `${record.title} ${record.lesson} ${record.feedback || ""}`;
+      const recordWords = words(text);
+      const hits = [...queryWords].filter((word) => recordWords.has(word)).length;
+      const lexical = queryWords.size ? hits / queryWords.size : 0;
+      const semantic = cosineSimilarity(queryVector, localEmbedding(text));
+      const outcomeWeight =
+        record.outcome === "success"
+          ? 0.08
+          : record.outcome === "failed"
+            ? 0.04
+            : record.outcome === "partial"
+              ? 0.05
+              : 0;
+      return {
+        id: record.id,
+        title: record.title,
+        lesson: record.feedback
+          ? `${record.lesson} Correction: ${record.feedback}`
+          : record.lesson,
+        outcome: record.outcome,
+        confidence: record.confidence,
+        relevance: Number(
+          (semantic * 0.55 + lexical * 0.3 + record.confidence * 0.15 + outcomeWeight).toFixed(3),
+        ),
+      };
+    })
+    .filter((record) => record.relevance >= 0.18)
+    .sort((left, right) => right.relevance - left.relevance)
+    .slice(0, limit);
+}
+
+export function rerankSkillsWithExperience(
+  ranked: RankedMemoryChunk[],
+  scores: SkillScore[],
+) {
+  const byId = new Map(scores.map((score) => [score.skillId, score]));
+  return ranked
+    .map((item) => {
+      const experience = byId.get(item.memory.id);
+      if (!experience) return item;
+      const evidenceWeight = Math.min(1, experience.uses / 5);
+      const multiplier = 1 + (experience.score - 0.5) * 0.35 * evidenceWeight;
+      return { ...item, score: item.score * multiplier };
+    })
+    .sort((left, right) => right.score - left.score);
+}
+
 export function buildAgentRun({
   goal,
   projectId,
   ranked,
   proposedAction,
+  lessons = [],
   id = randomUUID(),
   timestamp = new Date().toISOString(),
 }: {
@@ -37,6 +110,7 @@ export function buildAgentRun({
   projectId?: string;
   ranked: RankedMemoryChunk[];
   proposedAction?: ActionProposal;
+  lessons?: AgentAppliedLesson[];
   id?: string;
   timestamp?: string;
 }): AgentRun {
@@ -62,6 +136,7 @@ export function buildAgentRun({
     status: "awaiting_approval",
     skillIds,
     evidence,
+    appliedLessons: lessons,
     proposedAction,
     outcome: "unrated",
     steps: [
@@ -76,7 +151,7 @@ export function buildAgentRun({
         id: `${id}-recall`,
         kind: "recall",
         title: "Recall verified context",
-        description: `${evidence.length} relevant knowledge source${evidence.length === 1 ? "" : "s"} found.`,
+        description: `${evidence.length} relevant knowledge source${evidence.length === 1 ? "" : "s"} and ${lessons.length} prior lesson${lessons.length === 1 ? "" : "s"} found.`,
         status: "completed",
       },
       {
@@ -125,8 +200,13 @@ export function buildGroundedAgentResult(
     (item, index) =>
       `${index + 1}. ${item.title.replace(/^(Skill|Reference|Vault) · /, "")} · ${item.heading}: ${item.excerpt}`,
   );
+  const priorLessons = (run.appliedLessons || []).map(
+    (item) =>
+      `- ${item.outcome === "failed" ? "Avoid repeating" : "Reuse"}: ${item.lesson}`,
+  );
   return [
     `Grounded plan for “${run.goal}”`,
+    ...(priorLessons.length ? ["Prior lessons applied:", ...priorLessons] : []),
     ...points,
     "Use the cited local knowledge as the operating constraints. Mark the outcome after applying the plan so BlackHole can learn which skill stack worked.",
   ].join("\n\n");
@@ -148,7 +228,7 @@ export function buildLearningRecord(
     runId: run.id,
     projectId: run.projectId,
     title: run.goal.length > 88 ? `${run.goal.slice(0, 85)}…` : run.goal,
-    lesson: `For this objective, BlackHole used ${skillLabel} and ${run.evidence.length} evidence sources. Outcome feedback will strengthen or weaken this recommendation for similar work.`,
+    lesson: `For this objective, BlackHole used ${skillLabel}, ${run.evidence.length} evidence sources, and ${(run.appliedLessons || []).length} prior lessons. Outcome feedback will strengthen or weaken this recommendation for similar work.`,
     evidenceIds: unique(run.evidence.map((item) => item.memoryId)),
     skillIds: run.skillIds,
     outcome: run.outcome,

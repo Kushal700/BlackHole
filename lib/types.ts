@@ -143,6 +143,15 @@ export interface AgentEvidence {
   score: number;
 }
 
+export interface AgentAppliedLesson {
+  id: string;
+  title: string;
+  lesson: string;
+  outcome: AgentOutcome;
+  confidence: number;
+  relevance: number;
+}
+
 export interface AgentRun {
   id: string;
   goal: string;
@@ -151,6 +160,7 @@ export interface AgentRun {
   steps: AgentStep[];
   skillIds: string[];
   evidence: AgentEvidence[];
+  appliedLessons?: AgentAppliedLesson[];
   proposedAction?: ActionProposal;
   result?: string;
   verification?: string;

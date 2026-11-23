@@ -2,7 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { guard } from "@/lib/http";
 import { parseActionRequest } from "@/lib/actions";
-import { buildAgentRun, filterSkillPool } from "@/lib/agent";
+import {
+  buildAgentRun,
+  filterSkillPool,
+  rankLearningRecords,
+  rerankSkillsWithExperience,
+} from "@/lib/agent";
 import { rankMemoryChunks } from "@/lib/semantic";
 import { isSkillMemory } from "@/lib/skill-activity";
 import { createAgentRun, readStore } from "@/lib/store";
@@ -65,10 +70,9 @@ export async function POST(request: NextRequest) {
   const projectSignal = `${project?.name || ""} ${project?.summary || ""} ${project?.goal || ""} ${parsed.data.goal}`;
   const allSkills = store.memories.filter(isSkillMemory);
   const relevantSkillPool = filterSkillPool(projectSignal, allSkills);
-  const rankedSkills = rankMemoryChunks(
-    parsed.data.goal,
-    relevantSkillPool,
-    6,
+  const rankedSkills = rerankSkillsWithExperience(
+    rankMemoryChunks(parsed.data.goal, relevantSkillPool, 8),
+    store.skillScores || [],
   );
   const rankedContext = rankMemoryChunks(
     parsed.data.goal,
@@ -83,6 +87,11 @@ export async function POST(request: NextRequest) {
     projectId,
     ranked,
     proposedAction: parseActionRequest(parsed.data.goal),
+    lessons: rankLearningRecords(
+      parsed.data.goal,
+      store.learningRecords || [],
+      projectId,
+    ),
   });
   await createAgentRun(run);
   return NextResponse.json(run, { status: 201 });

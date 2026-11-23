@@ -3,8 +3,10 @@ import {
   buildAgentRun,
   calculateSkillScore,
   filterSkillPool,
+  rankLearningRecords,
+  rerankSkillsWithExperience,
 } from "@/lib/agent";
-import type { Memory } from "@/lib/types";
+import type { LearningRecord, Memory, SkillScore } from "@/lib/types";
 
 const timestamp = "2026-11-22T12:00:00.000Z";
 
@@ -61,5 +63,61 @@ describe("BlackHole agent", () => {
     const selected = filterSkillPool("Roblox Action RPG", skills);
 
     expect(selected.map((item) => item.id)).toEqual(["roblox"]);
+  });
+
+  it("recalls project lessons and carries written corrections forward", () => {
+    const records: LearningRecord[] = [
+      {
+        id: "lesson-1",
+        runId: "run-1",
+        projectId: "project-roblox",
+        title: "Readable boss encounter",
+        lesson: "Use the combat and VFX skill stack.",
+        feedback: "Reduce the flame lane brightness on mobile.",
+        evidenceIds: [],
+        skillIds: [],
+        outcome: "partial",
+        confidence: 0.72,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      },
+      {
+        id: "lesson-2",
+        runId: "run-2",
+        projectId: "another-project",
+        title: "Marketing page",
+        lesson: "Use a brighter hero.",
+        evidenceIds: [],
+        skillIds: [],
+        outcome: "success",
+        confidence: 0.9,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      },
+    ];
+
+    const ranked = rankLearningRecords(
+      "Improve boss flame lanes for mobile readability",
+      records,
+      "project-roblox",
+    );
+
+    expect(ranked).toHaveLength(1);
+    expect(ranked[0].lesson).toContain("Reduce the flame lane brightness");
+  });
+
+  it("uses rated skill experience as a bounded ranking signal", () => {
+    const good = memory("good", "Skill · Roblox Combat", ["skill", "roblox"]);
+    const bad = memory("bad", "Skill · Roblox VFX", ["skill", "roblox"]);
+    const ranked = [
+      { memory: bad, heading: "VFX", lineStart: 1, content: bad.content, score: 0.7 },
+      { memory: good, heading: "Combat", lineStart: 1, content: good.content, score: 0.7 },
+    ];
+    const scores: SkillScore[] = [
+      { skillId: "good", uses: 5, successes: 4, partials: 0, failures: 0, score: 0.9, lastUsedAt: timestamp },
+      { skillId: "bad", uses: 5, successes: 0, partials: 0, failures: 4, score: 0.2, lastUsedAt: timestamp },
+    ];
+
+    expect(rerankSkillsWithExperience(ranked, scores)[0].memory.id).toBe("good");
   });
 });

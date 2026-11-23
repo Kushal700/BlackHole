@@ -26,12 +26,14 @@ BlackHole is a private, AI-powered second brain built around a cinematic 3D know
 - Supervised BlackHole Agent with evidence-backed planning, explicit approval gates, verified execution, and durable run history
 - Outcome-driven learning journal and per-skill confidence scores that improve from worked/partial/failed feedback
 - Project-aware skill selection that keeps Roblox agent runs focused on the Roblox capability stack
+- Closed-loop adaptive planning: relevant prior lessons, written corrections, and bounded skill-confidence signals shape future plans
+- Visible lesson provenance and a reversible “forget run” control that rebuilds confidence from retained history
 
 ## BlackHole Agent
 
 Open `http://localhost:3000/agent` to give BlackHole an objective. The agent recalls local project evidence, chooses relevant skills, presents every step before execution, and waits for approval. Completed runs create an unrated lesson; mark the outcome as worked, partial, or failed to adjust the selected skills' confidence for future runs.
 
-Agent learning is local, inspectable, and reversible. It records evidence and outcomes rather than retraining a hidden model. External publishing, Studio edits, code changes, and destructive actions remain unavailable unless a future integration exposes them through an explicit confirmation gate.
+Agent learning is local, inspectable, and reversible. It records evidence and outcomes rather than retraining a hidden model. Similar future objectives retrieve prior project lessons and corrections, while skill ratings provide a bounded ranking signal that never replaces semantic relevance. External publishing, Studio edits, code changes, and destructive actions remain unavailable unless a future integration exposes them through an explicit confirmation gate.
 
 ## Quick start on Windows
 

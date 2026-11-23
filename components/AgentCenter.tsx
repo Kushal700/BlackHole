@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Activity,
   BrainCircuit,
+  BookOpenCheck,
   Check,
   CheckCircle2,
   Circle,
@@ -21,6 +22,7 @@ import {
   Target,
   ThumbsDown,
   ThumbsUp,
+  Trash2,
   X,
   Zap,
 } from "lucide-react";
@@ -72,6 +74,7 @@ export function AgentCenter() {
   const [selectedId, setSelectedId] = useState<string>();
   const [busy, setBusy] = useState<"planning" | "executing" | "feedback">();
   const [message, setMessage] = useState("");
+  const [feedbackNote, setFeedbackNote] = useState("");
 
   const load = useCallback(async () => {
     const response = await fetch("/api/agent");
@@ -129,7 +132,11 @@ export function AgentCenter() {
     run: AgentRun,
     payload:
       | { command: "approve" | "reject" }
-      | { command: "feedback"; outcome: "success" | "partial" | "failed" },
+      | {
+          command: "feedback";
+          outcome: "success" | "partial" | "failed";
+          feedback?: string;
+        },
   ) {
     setBusy(payload.command === "feedback" ? "feedback" : "executing");
     setMessage("");
@@ -144,6 +151,22 @@ export function AgentCenter() {
       };
       setMessage(body.error || "The agent could not complete that command.");
     }
+    await load();
+    if (payload.command === "feedback") setFeedbackNote("");
+    setBusy(undefined);
+  }
+
+  async function forget(run: AgentRun) {
+    if (
+      !window.confirm(
+        "Forget this run and its lesson? Skill confidence will be rebuilt from the remaining history.",
+      )
+    )
+      return;
+    setBusy("feedback");
+    const response = await fetch(`/api/agent/${run.id}`, { method: "DELETE" });
+    if (!response.ok) setMessage("BlackHole could not forget that run.");
+    else setSelectedId(undefined);
     await load();
     setBusy(undefined);
   }
@@ -264,7 +287,20 @@ export function AgentCenter() {
                   {selected ? selected.goal : "No objective planned yet"}
                 </h2>
               </div>
-              {selected && <StatusPill status={selected.status} />}
+              {selected && (
+                <div className="flex items-center gap-2">
+                  <StatusPill status={selected.status} />
+                  <button
+                    type="button"
+                    className="btn-ghost !p-2 text-[#71695d] hover:text-red-200"
+                    onClick={() => void forget(selected)}
+                    aria-label="Forget this run"
+                    title="Forget this run"
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                </div>
+              )}
             </div>
 
             {selected ? (
@@ -292,6 +328,26 @@ export function AgentCenter() {
                     </div>
                   ))}
                 </div>
+
+                {Boolean(selected.appliedLessons?.length) && (
+                  <div className="mt-5 rounded-2xl border border-violet-300/10 bg-violet-300/[.025] p-4">
+                    <div className="flex items-center gap-2 text-sm font-medium text-violet-100">
+                      <BookOpenCheck size={16} /> Prior lessons applied
+                    </div>
+                    <div className="mt-3 space-y-3">
+                      {selected.appliedLessons?.map((lesson) => (
+                        <div key={lesson.id} className="border-l border-violet-200/15 pl-3">
+                          <div className="flex flex-wrap items-center gap-2 text-xs text-violet-100/80">
+                            <span className="capitalize">{lesson.outcome}</span>
+                            <span>·</span>
+                            <span>{Math.round(lesson.relevance * 100)}% relevant</span>
+                          </div>
+                          <p className="mt-1 text-sm leading-6 text-[#837a70]">{lesson.lesson}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {selected.status === "awaiting_approval" && (
                   <div className="mt-5 rounded-2xl border border-amber-300/15 bg-amber-300/[.045] p-4">
@@ -349,12 +405,18 @@ export function AgentCenter() {
                       Did this work?
                     </div>
                     <p className="mt-1 text-sm text-[#776f63]">
-                      Your rating teaches BlackHole which skills to trust for similar objectives.
+                      Your rating and correction teach BlackHole which skills and lessons to trust next time.
                     </p>
+                    <textarea
+                      className="input mt-4 min-h-20 resize-y text-sm"
+                      value={feedbackNote}
+                      onChange={(event) => setFeedbackNote(event.target.value)}
+                      placeholder="Optional correction: what worked, what failed, or what should change next time?"
+                    />
                     <div className="mt-4 flex flex-wrap gap-2">
-                      <FeedbackButton icon={<ThumbsUp size={14} />} label="Worked" onClick={() => void command(selected, { command: "feedback", outcome: "success" })} />
-                      <FeedbackButton icon={<Target size={14} />} label="Partly" onClick={() => void command(selected, { command: "feedback", outcome: "partial" })} />
-                      <FeedbackButton icon={<ThumbsDown size={14} />} label="Failed" onClick={() => void command(selected, { command: "feedback", outcome: "failed" })} />
+                      <FeedbackButton icon={<ThumbsUp size={14} />} label="Worked" onClick={() => void command(selected, { command: "feedback", outcome: "success", feedback: feedbackNote.trim() || undefined })} />
+                      <FeedbackButton icon={<Target size={14} />} label="Partly" onClick={() => void command(selected, { command: "feedback", outcome: "partial", feedback: feedbackNote.trim() || undefined })} />
+                      <FeedbackButton icon={<ThumbsDown size={14} />} label="Failed" onClick={() => void command(selected, { command: "feedback", outcome: "failed", feedback: feedbackNote.trim() || undefined })} />
                     </div>
                   </div>
                 )}
@@ -416,6 +478,11 @@ export function AgentCenter() {
                     <span className="shrink-0 text-xs text-amber-200">{Math.round(item.confidence * 100)}%</span>
                   </div>
                   <p className="mt-2 text-sm leading-6 text-[#756e62]">{item.lesson}</p>
+                  {item.feedback && (
+                    <p className="mt-3 rounded-xl border border-violet-200/10 bg-violet-200/[.025] px-3 py-2 text-sm leading-6 text-violet-100/70">
+                      Correction: {item.feedback}
+                    </p>
+                  )}
                   <div className="mt-3 flex items-center justify-between text-xs text-[#625c52]">
                     <span>{item.skillIds.length} skills · {item.evidenceIds.length} sources</span>
                     <span className="capitalize">{item.outcome}</span>

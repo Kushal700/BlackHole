@@ -45,6 +45,10 @@ Last updated: 2026-11-22
 - [x] Animated BlackHole Agent command center with run history, learning journal, and skill intelligence dashboard
 - [x] Browser-verified approval and rejection flows with responsive overflow checks
 - [x] Unit tests for agent planning, project-aware skill selection, and feedback scoring
+- [x] Closed-loop lesson retrieval so prior project outcomes and written corrections shape similar future plans
+- [x] Experience-aware skill reranking with bounded confidence weighting and semantic relevance preserved
+- [x] Visible applied-lesson provenance, written feedback capture, and reversible run forgetting
+- [x] Integration test proving a correction is retrieved by the next related Roblox objective
 - [x] Type check, lint, and production build validation
 
 ## Deliberate deployment follow-ups
