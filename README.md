@@ -12,7 +12,9 @@ BlackHole is a private, AI-powered second brain built around a cinematic 3D know
 - TXT, Markdown, PDF, DOCX, JSON, CSV, and Obsidian ZIP imports with exact duplicate detection
 - Server-side password protection with an HTTP-only signed cookie
 - Immediate local JSON persistence and optional PostgreSQL + pgvector persistence
-- Persistent skill memory that automatically mirrors installed Codex and plugin skills into the universe
+- Persistent skill memory that mirrors installed Codex skills and their reference guides into the universe
+- Live Obsidian vault sync with note metadata, searchable content, and `[[wikilinks]]` preserved as graph connections
+- Filtered Skills & Vault library for browsing skills, detailed references, and vault notes without a crowded all-at-once view
 
 ## Quick start on Windows
 
@@ -49,6 +51,7 @@ Copy-Item .env.example .env.local
 - `DATABASE_URL`: moves persistence to PostgreSQL and mirrors embeddings into pgvector. Without it, the local JSON store is used.
 - `OPENAI_CHAT_MODEL` and `OPENAI_EMBEDDING_MODEL`: optional model overrides.
 - `BLACKHOLE_SKILL_ROOTS`: optional extra folders containing `SKILL.md` files. Installed Codex skills are detected automatically.
+- `BLACKHOLE_VAULT_ROOTS`: optional Obsidian vault folders. On this Windows setup, `Documents\ObsidianVaults\Roblox Developer Mastery` is detected automatically.
 
 API keys are used only in server routes and are never exposed to client code.
 

@@ -12,7 +12,7 @@ const navigation = [
   { href: "/", label: "Overview", icon: LayoutDashboard },
   { href: "/universe", label: "Universe", icon: Atom },
   { href: "/memories", label: "Memories", icon: Library },
-  { href: "/skills", label: "Skills", icon: GraduationCap },
+  { href: "/skills", label: "Skills & Vault", icon: GraduationCap },
   { href: "/chat", label: "Ask BlackHole", icon: MessageCircleMore },
   { href: "/projects", label: "Projects", icon: FolderKanban },
   { href: "/tasks", label: "Tasks", icon: ListTodo },
@@ -85,7 +85,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="mt-auto rounded-2xl border border-amber-300/10 bg-gradient-to-br from-amber-300/[.07] to-transparent p-4">
           <div className="flex items-center gap-2 text-xs text-amber-200"><Sparkles size={14} /> Memory engine online</div>
           <div className="mt-3 h-1 overflow-hidden rounded-full bg-white/[.05]"><div className="h-full w-[72%] bg-gradient-to-r from-amber-700 to-amber-300" /></div>
-          <p className="mt-2 text-[10px] leading-4 text-[#766f61]">Local persistence active. Add an OpenAI key for synthesized answers.</p>
+          <p className="mt-2 text-[10px] leading-4 text-[#766f61]">Local skills and Obsidian vault memory are synchronized.</p>
         </div>
       </aside>
       {mobileOpen && <button className="fixed inset-0 z-40 bg-black/70 lg:hidden" onClick={() => setMobileOpen(false)} aria-label="Close menu overlay" />}

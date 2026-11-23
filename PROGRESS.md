@@ -22,6 +22,9 @@ Last updated: 2026-11-22
 - [x] Server-side API authorization and user-controlled data deletion
 - [x] Unit tests for semantic retrieval
 - [x] Quiet one-click Windows launcher with Desktop and Start-menu shortcut support
+- [x] Codex skill-reference ingestion in addition to top-level `SKILL.md` memory
+- [x] Live Obsidian vault ingestion with explicit wikilink graph connections and stale-note cleanup
+- [x] Filtered Skills & Vault library with progressive card loading
 - [x] Type check, lint, and production build validation
 
 ## Deliberate deployment follow-ups
