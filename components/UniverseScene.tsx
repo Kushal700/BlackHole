@@ -6,6 +6,7 @@ import { Html, OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 import type { Connection, Memory } from "@/lib/types";
 import { categoryColors } from "@/components/ui";
+import { isSkillMemory, skillActivityStrength } from "@/lib/skill-activity";
 
 type VisualNode = {
   id: string;
@@ -476,6 +477,72 @@ function OrbitalArcs() {
   );
 }
 
+function ActiveSkillGlow({
+  node,
+  texture,
+}: {
+  node: VisualNode;
+  texture: THREE.Texture;
+}) {
+  const group = useRef<THREE.Group>(null);
+  const halo = useRef<THREE.SpriteMaterial>(null);
+  const ring = useRef<THREE.MeshBasicMaterial>(null);
+  const phase = useMemo(
+    () => seeded(node.memory.id)() * Math.PI * 2,
+    [node.memory.id],
+  );
+  useFrame(({ clock }) => {
+    const strength = skillActivityStrength(node.memory);
+    const pulse = (Math.sin(clock.elapsedTime * 4.2 + phase) + 1) / 2;
+    const scale = 0.9 + strength * (0.32 + pulse * 0.32);
+    if (group.current) {
+      group.current.scale.setScalar(scale);
+      group.current.rotation.z += 0.008;
+    }
+    if (halo.current) halo.current.opacity = strength * (0.52 + pulse * 0.34);
+    if (ring.current) ring.current.opacity = strength * (0.42 + pulse * 0.38);
+  });
+  return (
+    <group ref={group} position={node.position}>
+      <sprite scale={[1.75, 1.75, 1]}>
+        <spriteMaterial
+          ref={halo}
+          map={texture}
+          color="#fff2ba"
+          transparent
+          opacity={0.8}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+          toneMapped={false}
+        />
+      </sprite>
+      <mesh>
+        <ringGeometry args={[0.16, 0.23, 32]} />
+        <meshBasicMaterial
+          ref={ring}
+          color="#ffe09a"
+          transparent
+          opacity={0.7}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+          toneMapped={false}
+        />
+      </mesh>
+      <pointLight color="#ffd27a" intensity={9} distance={2.4} decay={2} />
+      <Html
+        position={[0, 0.34, 0]}
+        center
+        distanceFactor={12}
+        style={{ pointerEvents: "none" }}
+      >
+        <div className="whitespace-nowrap rounded-full border border-amber-100/25 bg-black/75 px-2 py-1 text-[7px] font-bold uppercase tracking-[.18em] text-amber-100 shadow-[0_0_18px_#eaa33b55] backdrop-blur-md">
+          Skill active
+        </div>
+      </Html>
+    </group>
+  );
+}
+
 function MemoryGraph({
   nodes,
   clusters,
@@ -625,6 +692,19 @@ function MemoryGraph({
           )}
         </group>
       ))}
+      {primaryNodes
+        .filter(
+          (node) =>
+            isSkillMemory(node.memory) &&
+            skillActivityStrength(node.memory) > 0,
+        )
+        .map((node) => (
+          <ActiveSkillGlow
+            key={`active-${node.id}`}
+            node={node}
+            texture={glowTexture}
+          />
+        ))}
       {primaryNodes.length > 14 &&
         clusters.map((cluster) => (
           <Html

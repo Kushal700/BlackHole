@@ -18,6 +18,7 @@ import {
   rankMemories,
 } from "@/lib/semantic";
 import { readPostgresStore, writePostgresStore } from "@/lib/postgres-state";
+import { isSkillMemory } from "@/lib/skill-activity";
 
 const DATA_DIRECTORY = path.join(process.cwd(), "data");
 const DATA_FILE = path.join(DATA_DIRECTORY, "blackhole.json");
@@ -376,6 +377,26 @@ export async function listMemories(query = "", includeArchived = false) {
 export async function getMemory(id: string) {
   const store = await readStore();
   return store.memories.find((memory) => memory.id === id);
+}
+
+export async function markSkillMemoriesUsed(ids: string[]) {
+  const uniqueIds = new Set(ids);
+  if (!uniqueIds.size) return [];
+  const store = await readStore();
+  const timestamp = new Date().toISOString();
+  const updated: Memory[] = [];
+  store.memories = store.memories.map((memory) => {
+    if (!uniqueIds.has(memory.id) || !isSkillMemory(memory)) return memory;
+    const next = {
+      ...memory,
+      lastUsedAt: timestamp,
+      usageCount: (memory.usageCount || 0) + 1,
+    };
+    updated.push(next);
+    return next;
+  });
+  if (updated.length) await writeStore(store);
+  return updated;
 }
 
 type MemoryInput = Omit<Memory, "id" | "createdAt" | "updatedAt" | "embedding">;

@@ -535,6 +535,8 @@ async function runSkillSync() {
       archived: false,
       createdAt: previous?.createdAt || timestamp,
       updatedAt: timestamp,
+      lastUsedAt: previous?.lastUsedAt,
+      usageCount: previous?.usageCount,
       embedding: embeddings[index] || localEmbedding(embeddingText(item)),
     };
     if (previous) {

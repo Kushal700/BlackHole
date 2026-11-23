@@ -276,6 +276,14 @@ export function Skills() {
               <Link
                 href={`/memories?id=${skill.id}`}
                 key={skill.id}
+                onClick={() => {
+                  void fetch("/api/skills/activity", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ memoryIds: [skill.id] }),
+                    keepalive: true,
+                  });
+                }}
                 className="panel group relative min-h-60 overflow-hidden rounded-3xl p-6 transition hover:-translate-y-0.5 hover:border-amber-300/25"
               >
                 <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-amber-300/[.035] blur-2xl transition group-hover:bg-amber-300/[.07]" />

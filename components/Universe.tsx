@@ -16,6 +16,7 @@ import type { Connection, Memory } from "@/lib/types";
 import { MEMORY_CATEGORIES } from "@/lib/types";
 import { CategoryPill } from "@/components/ui";
 import { RichMarkdown } from "@/components/RichMarkdown";
+import { isSkillMemory, skillActivityStrength } from "@/lib/skill-activity";
 
 const UniverseScene = dynamic(() => import("@/components/UniverseScene"), {
   ssr: false,
@@ -69,13 +70,51 @@ export function Universe() {
   const visibleConnections = connections.filter(
     (item) => visibleIds.has(item.sourceId) && visibleIds.has(item.targetId),
   );
+  const activeSkills = visible.filter(
+    (memory) => isSkillMemory(memory) && skillActivityStrength(memory) > 0,
+  );
+
+  async function selectMemory(memory: Memory) {
+    if (!isSkillMemory(memory)) {
+      setSelected(memory);
+      return;
+    }
+    const optimistic = {
+      ...memory,
+      lastUsedAt: new Date().toISOString(),
+      usageCount: (memory.usageCount || 0) + 1,
+    };
+    setSelected(optimistic);
+    setMemories((items) =>
+      items.map((item) => (item.id === memory.id ? optimistic : item)),
+    );
+    try {
+      const response = await fetch("/api/skills/activity", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ memoryIds: [memory.id] }),
+      });
+      if (response.ok) {
+        const updated = (await response.json()).updated?.[0] as
+          Memory | undefined;
+        if (updated) {
+          setSelected(updated);
+          setMemories((items) =>
+            items.map((item) => (item.id === updated.id ? updated : item)),
+          );
+        }
+      }
+    } catch {
+      /* The optimistic glow still provides immediate feedback. */
+    }
+  }
 
   return (
     <div className="relative h-screen min-h-[620px] overflow-hidden bg-black">
       <UniverseScene
         memories={visible}
         connections={visibleConnections}
-        onSelect={setSelected}
+        onSelect={selectMemory}
       />
 
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_45%,rgba(0,0,0,.46)_100%)]" />
@@ -184,6 +223,15 @@ export function Universe() {
         <span>{visible.length} memories</span>
         <span className="h-1 w-1 rounded-full bg-amber-100/35" />
         <span>{visibleConnections.length} links</span>
+        {activeSkills.length > 0 && (
+          <>
+            <span className="h-1 w-1 rounded-full bg-amber-100/35" />
+            <span className="flex items-center gap-1.5 text-amber-200/70">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-200 shadow-[0_0_9px_#ffd27a]" />
+              {activeSkills.length} active skills
+            </span>
+          </>
+        )}
       </div>
 
       {selected && (
@@ -197,6 +245,12 @@ export function Universe() {
           </button>
           <div className="mt-9">
             <CategoryPill category={selected.category} />
+            {isSkillMemory(selected) && skillActivityStrength(selected) > 0 && (
+              <span className="ml-2 inline-flex items-center gap-1.5 rounded-full border border-amber-200/20 bg-amber-200/[.07] px-2 py-1 text-[8px] uppercase tracking-wider text-amber-100">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-200 shadow-[0_0_8px_#ffd27a]" />
+                Active now · used {selected.usageCount || 1}×
+              </span>
+            )}
             <h2 className="font-display mt-5 text-3xl leading-tight text-[#eee7da]">
               {selected.title}
             </h2>

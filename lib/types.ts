@@ -11,10 +11,7 @@ export const MEMORY_CATEGORIES = [
 
 export type MemoryCategory = (typeof MEMORY_CATEGORIES)[number];
 export type ConnectionType =
-  | "related_to"
-  | "depends_on"
-  | "contradicts"
-  | "belongs_to_project";
+  "related_to" | "depends_on" | "contradicts" | "belongs_to_project";
 
 export interface Memory {
   id: string;
@@ -29,6 +26,8 @@ export interface Memory {
   createdAt: string;
   updatedAt: string;
   embedding?: number[];
+  lastUsedAt?: string;
+  usageCount?: number;
 }
 
 export interface Connection {
@@ -74,7 +73,8 @@ export interface ImportRecord {
   createdAt: string;
 }
 
-export type ActionKind = "create_task" | "create_memory" | "update_project_progress" | "sync_library";
+export type ActionKind =
+  "create_task" | "create_memory" | "update_project_progress" | "sync_library";
 
 export interface ActionProposal {
   kind: ActionKind;

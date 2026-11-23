@@ -28,6 +28,7 @@ Last updated: 2026-11-22
 - [x] Domain-aware Roblox universe clusters and dedicated vault/Roblox filters
 - [x] Automatic and manual backups with restore preview, safety copy, and retention
 - [x] Unit tests for chunk retrieval and Jarvis action parsing
+- [x] Live skill-usage tracking with animated universe beacons, activity counts, and integration API
 - [x] Quiet one-click Windows launcher with Desktop and Start-menu shortcut support
 - [x] Codex skill-reference ingestion in addition to top-level `SKILL.md` memory
 - [x] Live Obsidian vault ingestion with explicit wikilink graph connections and stale-note cleanup
