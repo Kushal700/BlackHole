@@ -26,6 +26,14 @@ npm run dev
 
 Open `http://localhost:3000`. No service or API key is required for local mode; data is saved to `data/blackhole.json` and survives restarts.
 
+### One-click Windows launcher
+
+Run `scripts/Start-BlackHole.ps1` to start the production app quietly in the background and open the immersive universe. The launcher reuses an existing BlackHole server, finds another local port if port 3000 is busy, and prepares dependencies/build output automatically when needed. A Windows shortcut can target:
+
+```text
+powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "<project>\scripts\Start-BlackHole.ps1"
+```
+
 ## Configuration
 
 Copy `.env.example` to `.env.local` and set only the services you want:

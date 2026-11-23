@@ -21,6 +21,7 @@ Last updated: 2026-11-22
 - [x] Owner password authentication and signed HTTP-only sessions
 - [x] Server-side API authorization and user-controlled data deletion
 - [x] Unit tests for semantic retrieval
+- [x] Quiet one-click Windows launcher with Desktop and Start-menu shortcut support
 - [x] Type check, lint, and production build validation
 
 ## Deliberate deployment follow-ups
