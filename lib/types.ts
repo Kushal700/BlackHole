@@ -107,6 +107,85 @@ export interface ActionRecord {
   createdAt: string;
 }
 
+export type AgentRunStatus =
+  | "planning"
+  | "awaiting_approval"
+  | "executing"
+  | "verifying"
+  | "learning"
+  | "completed"
+  | "rejected"
+  | "failed";
+
+export type AgentStepStatus =
+  | "pending"
+  | "active"
+  | "completed"
+  | "skipped"
+  | "failed";
+
+export type AgentOutcome = "unrated" | "success" | "partial" | "failed";
+
+export interface AgentStep {
+  id: string;
+  kind: "understand" | "recall" | "skills" | "act" | "verify" | "learn";
+  title: string;
+  description: string;
+  status: AgentStepStatus;
+  requiresApproval?: boolean;
+}
+
+export interface AgentEvidence {
+  memoryId: string;
+  title: string;
+  heading: string;
+  excerpt: string;
+  score: number;
+}
+
+export interface AgentRun {
+  id: string;
+  goal: string;
+  projectId?: string;
+  status: AgentRunStatus;
+  steps: AgentStep[];
+  skillIds: string[];
+  evidence: AgentEvidence[];
+  proposedAction?: ActionProposal;
+  result?: string;
+  verification?: string;
+  outcome: AgentOutcome;
+  feedback?: string;
+  createdAt: string;
+  updatedAt: string;
+  completedAt?: string;
+}
+
+export interface LearningRecord {
+  id: string;
+  runId: string;
+  projectId?: string;
+  title: string;
+  lesson: string;
+  evidenceIds: string[];
+  skillIds: string[];
+  outcome: AgentOutcome;
+  confidence: number;
+  feedback?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SkillScore {
+  skillId: string;
+  uses: number;
+  successes: number;
+  partials: number;
+  failures: number;
+  score: number;
+  lastUsedAt: string;
+}
+
 export interface StoreData {
   memories: Memory[];
   connections: Connection[];
@@ -114,6 +193,9 @@ export interface StoreData {
   tasks: Task[];
   imports: ImportRecord[];
   actions?: ActionRecord[];
+  agentRuns?: AgentRun[];
+  learningRecords?: LearningRecord[];
+  skillScores?: SkillScore[];
   activeProjectId?: string;
   studioConnection?: StudioConnection;
 }

@@ -3,14 +3,11 @@ import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { guard } from "@/lib/http";
 import {
-  createMemory,
-  createTask,
   readStore,
   recordAction,
-  updateProject,
 } from "@/lib/store";
-import { syncSkills } from "@/lib/skills";
 import type { ActionRecord } from "@/lib/types";
+import { executeActionProposal } from "@/lib/action-executor";
 
 const proposalSchema = z.discriminatedUnion("kind", [
   z.object({
@@ -72,56 +69,7 @@ export async function POST(request: NextRequest) {
     );
   const proposal = parsed.data;
   try {
-    let summary = "Action completed.";
-    let result: unknown;
-    if (proposal.kind === "create_task") {
-      const store = await readStore();
-      const project = proposal.payload.projectName
-        ? store.projects.find((item) =>
-            item.name
-              .toLowerCase()
-              .includes(proposal.payload.projectName!.toLowerCase()),
-          )
-        : undefined;
-      result = await createTask({
-        title: proposal.payload.title,
-        description:
-          proposal.payload.description || "Created by BlackHole Jarvis",
-        priority: proposal.payload.priority || "medium",
-        status: "todo",
-        projectId: project?.id,
-      });
-      summary = `Created task “${proposal.payload.title}”.`;
-    } else if (proposal.kind === "create_memory") {
-      result = await createMemory({
-        title: proposal.payload.title,
-        content: proposal.payload.content,
-        category: "note",
-        tags: ["jarvis", "captured"],
-        source: "BlackHole Jarvis",
-        archived: false,
-      });
-      summary = `Saved memory “${proposal.payload.title}”.`;
-    } else if (proposal.kind === "update_project_progress") {
-      const store = await readStore();
-      const project = store.projects.find((item) =>
-        item.name
-          .toLowerCase()
-          .includes(proposal.payload.projectName.toLowerCase()),
-      );
-      if (!project)
-        return NextResponse.json(
-          { error: `No project matched “${proposal.payload.projectName}”.` },
-          { status: 404 },
-        );
-      result = await updateProject(project.id, {
-        progress: proposal.payload.progress,
-      });
-      summary = `Updated ${project.name} to ${proposal.payload.progress}%.`;
-    } else {
-      result = await syncSkills();
-      summary = "Synchronized installed skills, references, and vault notes.";
-    }
+    const { summary, result } = await executeActionProposal(proposal);
     const record: ActionRecord = {
       id: randomUUID(),
       kind: proposal.kind,

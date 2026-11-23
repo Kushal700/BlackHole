@@ -11,6 +11,9 @@ import type {
   Task,
   ActionRecord,
   StudioConnection,
+  AgentRun,
+  LearningRecord,
+  AgentOutcome,
 } from "@/lib/types";
 import {
   cosineSimilarity,
@@ -21,6 +24,7 @@ import {
 import { readPostgresStore, writePostgresStore } from "@/lib/postgres-state";
 import { isSkillMemory } from "@/lib/skill-activity";
 import { publishSkillActivity } from "@/lib/activity-events";
+import { calculateSkillScore } from "@/lib/agent";
 
 const DATA_DIRECTORY = path.join(process.cwd(), "data");
 const DATA_FILE = path.join(DATA_DIRECTORY, "blackhole.json");
@@ -32,6 +36,9 @@ const now = "2026-11-22T09:00:00.000Z";
 
 const seed: StoreData = {
   actions: [],
+  agentRuns: [],
+  learningRecords: [],
+  skillScores: [],
   projects: [
     {
       id: "project-blackhole",
@@ -214,6 +221,9 @@ function hydrate(input: StoreData): StoreData {
     ...input,
     activeProjectId,
     actions: input.actions || [],
+    agentRuns: input.agentRuns || [],
+    learningRecords: input.learningRecords || [],
+    skillScores: input.skillScores || [],
     memories: input.memories.map((memory) => ({
       ...memory,
       embedding:
@@ -615,6 +625,148 @@ export async function recordAction(record: ActionRecord) {
   return record;
 }
 
+export async function createAgentRun(run: AgentRun) {
+  const store = await readStore();
+  store.agentRuns = [run, ...(store.agentRuns || [])].slice(0, 100);
+  await writeStore(store);
+  return run;
+}
+
+export async function updateAgentRun(id: string, patch: Partial<AgentRun>) {
+  const store = await readStore();
+  const index = (store.agentRuns || []).findIndex((run) => run.id === id);
+  if (index < 0) return undefined;
+  const run = {
+    ...store.agentRuns![index],
+    ...patch,
+    id,
+    updatedAt: new Date().toISOString(),
+  };
+  store.agentRuns![index] = run;
+  await writeStore(store);
+  return run;
+}
+
+export async function completeAgentRun(
+  id: string,
+  patch: Partial<AgentRun>,
+  learning: LearningRecord,
+) {
+  const store = await readStore();
+  const index = (store.agentRuns || []).findIndex((run) => run.id === id);
+  if (index < 0) return undefined;
+  const timestamp = new Date().toISOString();
+  const run: AgentRun = {
+    ...store.agentRuns![index],
+    ...patch,
+    id,
+    status: "completed",
+    completedAt: timestamp,
+    updatedAt: timestamp,
+  };
+  store.agentRuns![index] = run;
+  store.learningRecords = [
+    learning,
+    ...(store.learningRecords || []).filter((item) => item.runId !== id),
+  ].slice(0, 250);
+  store.skillScores ||= [];
+  for (const skillId of run.skillIds) {
+    const scoreIndex = store.skillScores.findIndex(
+      (item) => item.skillId === skillId,
+    );
+    const next = calculateSkillScore(
+      scoreIndex >= 0 ? store.skillScores[scoreIndex] : undefined,
+      skillId,
+      "use",
+      timestamp,
+    );
+    if (scoreIndex >= 0) store.skillScores[scoreIndex] = next;
+    else store.skillScores.push(next);
+  }
+  await writeStore(store);
+  return run;
+}
+
+export async function recordAgentFeedback(
+  id: string,
+  outcome: Exclude<AgentOutcome, "unrated">,
+  feedback?: string,
+) {
+  const store = await readStore();
+  const index = (store.agentRuns || []).findIndex((run) => run.id === id);
+  if (index < 0) return undefined;
+  const current = store.agentRuns![index];
+  if (current.outcome !== "unrated") return current;
+  const timestamp = new Date().toISOString();
+  const run: AgentRun = {
+    ...current,
+    outcome,
+    feedback: feedback?.trim() || undefined,
+    updatedAt: timestamp,
+  };
+  store.agentRuns![index] = run;
+  const learning = (store.learningRecords || []).find(
+    (item) => item.runId === id,
+  );
+  if (learning) {
+    learning.outcome = outcome;
+    learning.feedback = feedback?.trim() || undefined;
+    learning.confidence = Math.max(
+      0.1,
+      Math.min(
+        0.99,
+        Number(
+          (
+            learning.confidence +
+            (outcome === "success" ? 0.08 : outcome === "partial" ? 0.02 : -0.12)
+          ).toFixed(2),
+        ),
+      ),
+    );
+    learning.updatedAt = timestamp;
+  }
+  store.skillScores ||= [];
+  for (const skillId of run.skillIds) {
+    const scoreIndex = store.skillScores.findIndex(
+      (item) => item.skillId === skillId,
+    );
+    const next = calculateSkillScore(
+      scoreIndex >= 0 ? store.skillScores[scoreIndex] : undefined,
+      skillId,
+      outcome,
+      timestamp,
+    );
+    if (scoreIndex >= 0) store.skillScores[scoreIndex] = next;
+    else store.skillScores.push(next);
+  }
+  await writeStore(store);
+  return run;
+}
+
+export async function deleteAgentRun(id: string) {
+  const store = await readStore();
+  const before = (store.agentRuns || []).length;
+  store.agentRuns = (store.agentRuns || []).filter((run) => run.id !== id);
+  if (store.agentRuns.length === before) return false;
+  store.learningRecords = (store.learningRecords || []).filter(
+    (record) => record.runId !== id,
+  );
+  store.skillScores = [];
+  const scores = new Map<string, NonNullable<StoreData["skillScores"]>[number]>();
+  for (const run of store.agentRuns) {
+    if (run.status !== "completed") continue;
+    for (const skillId of run.skillIds) {
+      let score = calculateSkillScore(scores.get(skillId), skillId, "use", run.completedAt || run.updatedAt);
+      if (run.outcome !== "unrated")
+        score = calculateSkillScore(score, skillId, run.outcome, run.updatedAt);
+      scores.set(skillId, score);
+    }
+  }
+  store.skillScores = [...scores.values()];
+  await writeStore(store);
+  return true;
+}
+
 export async function clearStore() {
   const empty: StoreData = {
     memories: [],
@@ -623,6 +775,9 @@ export async function clearStore() {
     tasks: [],
     imports: [],
     actions: [],
+    agentRuns: [],
+    learningRecords: [],
+    skillScores: [],
   };
   await writeStore(empty);
 }

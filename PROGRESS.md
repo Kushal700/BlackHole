@@ -39,6 +39,12 @@ Last updated: 2026-11-22
 - [x] Roblox Studio tooling, analytics/experiments, accessibility/localization, and narrative/quest skill packs
 - [x] Browser visual QA for the Cockpit and live active-skill universe beacons
 - [x] Unit tests for Cockpit release-readiness scoring
+- [x] Supervised local agent with recall, skill selection, planning, approval, execution, verification, and learning stages
+- [x] Durable agent runs, evidence trails, learning records, outcome feedback, and adaptive skill-confidence scoring
+- [x] Project-aware Roblox skill isolation and exact bad-run deletion with score reconstruction
+- [x] Animated BlackHole Agent command center with run history, learning journal, and skill intelligence dashboard
+- [x] Browser-verified approval and rejection flows with responsive overflow checks
+- [x] Unit tests for agent planning, project-aware skill selection, and feedback scoring
 - [x] Type check, lint, and production build validation
 
 ## Deliberate deployment follow-ups

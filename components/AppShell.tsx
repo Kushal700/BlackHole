@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 import {
   Atom,
+  Bot,
   BrainCircuit,
   CircleUserRound,
   FolderKanban,
@@ -25,6 +26,7 @@ import {
 const navigation = [
   { href: "/", label: "Overview", icon: LayoutDashboard },
   { href: "/cockpit", label: "Project Cockpit", icon: Gauge },
+  { href: "/agent", label: "BlackHole Agent", icon: Bot },
   { href: "/universe", label: "Universe", icon: Atom },
   { href: "/memories", label: "Memories", icon: Library },
   { href: "/skills", label: "Skills & Vault", icon: GraduationCap },
