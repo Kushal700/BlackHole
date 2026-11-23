@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   buildAgentRun,
   calculateSkillScore,
+  createPlaybookFromRun,
   filterSkillPool,
   rankLearningRecords,
+  rankPlaybooks,
   rerankSkillsWithExperience,
 } from "@/lib/agent";
 import type { LearningRecord, Memory, SkillScore } from "@/lib/types";
@@ -119,5 +121,29 @@ describe("BlackHole agent", () => {
     ];
 
     expect(rerankSkillsWithExperience(ranked, scores)[0].memory.id).toBe("good");
+  });
+
+  it("promotes a successful run and reuses its playbook for similar goals", () => {
+    const skill = memory("skill-1", "Skill · Roblox Boss Design", ["skill", "roblox"]);
+    const planned = buildAgentRun({
+      id: "run-playbook",
+      timestamp,
+      goal: "Build a readable Roblox boss encounter",
+      projectId: "project-roblox",
+      ranked: [
+        { memory: skill, heading: "Boss loop", lineStart: 1, content: skill.content, score: 0.8 },
+      ],
+    });
+    const completed = { ...planned, status: "completed" as const, outcome: "success" as const };
+    const playbook = createPlaybookFromRun(completed, "Readable boss workflow", timestamp);
+    const reused = rankPlaybooks(
+      "Plan another readable boss fight",
+      [playbook],
+      "project-roblox",
+    );
+
+    expect(playbook.steps.length).toBeGreaterThan(2);
+    expect(reused[0].id).toBe(playbook.id);
+    expect(reused[0].relevance).toBeGreaterThan(0.22);
   });
 });

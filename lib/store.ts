@@ -14,6 +14,7 @@ import type {
   AgentRun,
   LearningRecord,
   AgentOutcome,
+  AgentPlaybook,
 } from "@/lib/types";
 import {
   cosineSimilarity,
@@ -39,6 +40,7 @@ const seed: StoreData = {
   agentRuns: [],
   learningRecords: [],
   skillScores: [],
+  agentPlaybooks: [],
   projects: [
     {
       id: "project-blackhole",
@@ -224,6 +226,7 @@ function hydrate(input: StoreData): StoreData {
     agentRuns: input.agentRuns || [],
     learningRecords: input.learningRecords || [],
     skillScores: input.skillScores || [],
+    agentPlaybooks: input.agentPlaybooks || [],
     memories: input.memories.map((memory) => ({
       ...memory,
       embedding:
@@ -683,6 +686,15 @@ export async function completeAgentRun(
     if (scoreIndex >= 0) store.skillScores[scoreIndex] = next;
     else store.skillScores.push(next);
   }
+  for (const applied of run.appliedPlaybooks || []) {
+    const playbook = (store.agentPlaybooks || []).find(
+      (item) => item.id === applied.id,
+    );
+    if (playbook) {
+      playbook.usageCount += 1;
+      playbook.updatedAt = timestamp;
+    }
+  }
   await writeStore(store);
   return run;
 }
@@ -767,6 +779,28 @@ export async function deleteAgentRun(id: string) {
   return true;
 }
 
+export async function createAgentPlaybook(playbook: AgentPlaybook) {
+  const store = await readStore();
+  const existing = (store.agentPlaybooks || []).find(
+    (item) => item.sourceRunId === playbook.sourceRunId,
+  );
+  if (existing) return existing;
+  store.agentPlaybooks = [playbook, ...(store.agentPlaybooks || [])].slice(0, 100);
+  await writeStore(store);
+  return playbook;
+}
+
+export async function deleteAgentPlaybook(id: string) {
+  const store = await readStore();
+  const before = (store.agentPlaybooks || []).length;
+  store.agentPlaybooks = (store.agentPlaybooks || []).filter(
+    (playbook) => playbook.id !== id,
+  );
+  if (store.agentPlaybooks.length === before) return false;
+  await writeStore(store);
+  return true;
+}
+
 export async function clearStore() {
   const empty: StoreData = {
     memories: [],
@@ -778,6 +812,7 @@ export async function clearStore() {
     agentRuns: [],
     learningRecords: [],
     skillScores: [],
+    agentPlaybooks: [],
   };
   await writeStore(empty);
 }

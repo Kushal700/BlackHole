@@ -152,6 +152,25 @@ export interface AgentAppliedLesson {
   relevance: number;
 }
 
+export interface AgentPlaybook {
+  id: string;
+  name: string;
+  description: string;
+  trigger: string;
+  projectId?: string;
+  steps: string[];
+  skillIds: string[];
+  sourceRunId: string;
+  confidence: number;
+  usageCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AgentAppliedPlaybook extends AgentPlaybook {
+  relevance: number;
+}
+
 export interface AgentRun {
   id: string;
   goal: string;
@@ -161,6 +180,7 @@ export interface AgentRun {
   skillIds: string[];
   evidence: AgentEvidence[];
   appliedLessons?: AgentAppliedLesson[];
+  appliedPlaybooks?: AgentAppliedPlaybook[];
   proposedAction?: ActionProposal;
   result?: string;
   verification?: string;
@@ -206,6 +226,7 @@ export interface StoreData {
   agentRuns?: AgentRun[];
   learningRecords?: LearningRecord[];
   skillScores?: SkillScore[];
+  agentPlaybooks?: AgentPlaybook[];
   activeProjectId?: string;
   studioConnection?: StudioConnection;
 }

@@ -9,6 +9,8 @@ import type {
   ActionProposal,
   AgentEvidence,
   AgentAppliedLesson,
+  AgentAppliedPlaybook,
+  AgentPlaybook,
   AgentOutcome,
   AgentRun,
   LearningRecord,
@@ -81,6 +83,62 @@ export function rankLearningRecords(
     .slice(0, limit);
 }
 
+export function rankPlaybooks(
+  goal: string,
+  playbooks: AgentPlaybook[],
+  projectId?: string,
+  limit = 2,
+): AgentAppliedPlaybook[] {
+  const goalVector = localEmbedding(goal);
+  const goalWords = words(goal);
+  return playbooks
+    .filter((playbook) => !projectId || playbook.projectId === projectId)
+    .map((playbook) => {
+      const text = `${playbook.name} ${playbook.description} ${playbook.trigger} ${playbook.steps.join(" ")}`;
+      const playbookWords = words(text);
+      const hits = [...goalWords].filter((word) => playbookWords.has(word)).length;
+      const lexical = goalWords.size ? hits / goalWords.size : 0;
+      const relevance = Number(
+        (
+          cosineSimilarity(goalVector, localEmbedding(text)) * 0.62 +
+          lexical * 0.25 +
+          playbook.confidence * 0.13
+        ).toFixed(3),
+      );
+      return { ...playbook, relevance };
+    })
+    .filter((playbook) => playbook.relevance >= 0.22)
+    .sort((left, right) => right.relevance - left.relevance)
+    .slice(0, limit);
+}
+
+export function createPlaybookFromRun(
+  run: AgentRun,
+  name?: string,
+  timestamp = new Date().toISOString(),
+): AgentPlaybook {
+  if (run.status !== "completed" || run.outcome === "unrated" || run.outcome === "failed")
+    throw new Error("Only successful or partially successful completed runs can become playbooks.");
+  return {
+    id: randomUUID(),
+    name:
+      name?.trim() ||
+      (run.goal.length > 72 ? `${run.goal.slice(0, 69)}…` : run.goal),
+    description: `Reusable workflow learned from a ${run.outcome} agent run.`,
+    trigger: run.goal,
+    projectId: run.projectId,
+    steps: run.steps
+      .filter((step) => ["recall", "skills", "act", "verify"].includes(step.kind))
+      .map((step) => `${step.title}: ${step.description}`),
+    skillIds: run.skillIds,
+    sourceRunId: run.id,
+    confidence: run.outcome === "success" ? 0.78 : 0.62,
+    usageCount: 0,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  };
+}
+
 export function rerankSkillsWithExperience(
   ranked: RankedMemoryChunk[],
   scores: SkillScore[],
@@ -103,6 +161,7 @@ export function buildAgentRun({
   ranked,
   proposedAction,
   lessons = [],
+  playbooks = [],
   id = randomUUID(),
   timestamp = new Date().toISOString(),
 }: {
@@ -111,6 +170,7 @@ export function buildAgentRun({
   ranked: RankedMemoryChunk[];
   proposedAction?: ActionProposal;
   lessons?: AgentAppliedLesson[];
+  playbooks?: AgentAppliedPlaybook[];
   id?: string;
   timestamp?: string;
 }): AgentRun {
@@ -137,6 +197,7 @@ export function buildAgentRun({
     skillIds,
     evidence,
     appliedLessons: lessons,
+    appliedPlaybooks: playbooks,
     proposedAction,
     outcome: "unrated",
     steps: [
@@ -158,7 +219,7 @@ export function buildAgentRun({
         id: `${id}-skills`,
         kind: "skills",
         title: "Activate the skill stack",
-        description: `${skillIds.length} matching skill${skillIds.length === 1 ? "" : "s"} will guide the run.`,
+        description: `${skillIds.length} matching skill${skillIds.length === 1 ? "" : "s"} and ${playbooks.length} reusable playbook${playbooks.length === 1 ? "" : "s"} will guide the run.`,
         status: "pending",
       },
       {
@@ -204,8 +265,13 @@ export function buildGroundedAgentResult(
     (item) =>
       `- ${item.outcome === "failed" ? "Avoid repeating" : "Reuse"}: ${item.lesson}`,
   );
+  const playbookSteps = (run.appliedPlaybooks || []).flatMap((playbook) => [
+    `Playbook: ${playbook.name}`,
+    ...playbook.steps.map((step) => `- ${step}`),
+  ]);
   return [
     `Grounded plan for “${run.goal}”`,
+    ...(playbookSteps.length ? ["Reusable workflow applied:", ...playbookSteps] : []),
     ...(priorLessons.length ? ["Prior lessons applied:", ...priorLessons] : []),
     ...points,
     "Use the cited local knowledge as the operating constraints. Mark the outcome after applying the plan so BlackHole can learn which skill stack worked.",

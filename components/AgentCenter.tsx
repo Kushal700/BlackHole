@@ -6,6 +6,7 @@ import {
   Activity,
   BrainCircuit,
   BookOpenCheck,
+  BookMarked,
   Check,
   CheckCircle2,
   Circle,
@@ -23,6 +24,7 @@ import {
   ThumbsDown,
   ThumbsUp,
   Trash2,
+  Workflow,
   X,
   Zap,
 } from "lucide-react";
@@ -30,6 +32,7 @@ import { PageHeader, formatDate } from "@/components/ui";
 import { RichMarkdown } from "@/components/RichMarkdown";
 import type {
   AgentRun,
+  AgentPlaybook,
   LearningRecord,
   Project,
   SkillScore,
@@ -38,6 +41,7 @@ import type {
 interface AgentData {
   runs: AgentRun[];
   learningRecords: LearningRecord[];
+  playbooks: AgentPlaybook[];
   skillScores: Array<SkillScore & { title: string }>;
   projects: Project[];
   activeProjectId?: string;
@@ -48,6 +52,7 @@ interface AgentData {
     ratedRuns: number;
     successRate: number;
     strengthenedSkills: number;
+    playbooks: number;
   };
 }
 
@@ -136,7 +141,8 @@ export function AgentCenter() {
           command: "feedback";
           outcome: "success" | "partial" | "failed";
           feedback?: string;
-        },
+        }
+      | { command: "promote"; name?: string },
   ) {
     setBusy(payload.command === "feedback" ? "feedback" : "executing");
     setMessage("");
@@ -154,6 +160,15 @@ export function AgentCenter() {
     await load();
     if (payload.command === "feedback") setFeedbackNote("");
     setBusy(undefined);
+  }
+
+  async function removePlaybook(playbook: AgentPlaybook) {
+    if (!window.confirm(`Remove the “${playbook.name}” playbook?`)) return;
+    const response = await fetch(`/api/agent/playbooks/${playbook.id}`, {
+      method: "DELETE",
+    });
+    if (!response.ok) setMessage("BlackHole could not remove that playbook.");
+    await load();
   }
 
   async function forget(run: AgentRun) {
@@ -270,11 +285,12 @@ export function AgentCenter() {
         </div>
       </section>
 
-      <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <Metric icon={<Activity size={16} />} label="Agent runs" value={data.stats.totalRuns} />
         <Metric icon={<Lightbulb size={16} />} label="Lessons learned" value={data.stats.learnedLessons} />
         <Metric icon={<CheckCircle2 size={16} />} label="Rated success" value={data.stats.ratedRuns ? `${data.stats.successRate}%` : "Unrated"} />
         <Metric icon={<Zap size={16} />} label="Skills strengthened" value={data.stats.strengthenedSkills} />
+        <Metric icon={<Workflow size={16} />} label="Playbooks" value={data.stats.playbooks} />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,.8fr)]">
@@ -343,6 +359,25 @@ export function AgentCenter() {
                             <span>{Math.round(lesson.relevance * 100)}% relevant</span>
                           </div>
                           <p className="mt-1 text-sm leading-6 text-[#837a70]">{lesson.lesson}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {Boolean(selected.appliedPlaybooks?.length) && (
+                  <div className="mt-5 rounded-2xl border border-cyan-300/10 bg-cyan-300/[.025] p-4">
+                    <div className="flex items-center gap-2 text-sm font-medium text-cyan-100">
+                      <Workflow size={16} /> Reusable playbooks applied
+                    </div>
+                    <div className="mt-3 space-y-3">
+                      {selected.appliedPlaybooks?.map((playbook) => (
+                        <div key={playbook.id} className="rounded-xl border border-white/[.05] p-3">
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="text-sm text-[#c5d6d3]">{playbook.name}</span>
+                            <span className="text-xs text-cyan-100/70">{Math.round(playbook.relevance * 100)}%</span>
+                          </div>
+                          <p className="mt-1 text-sm text-[#756e62]">{playbook.description}</p>
                         </div>
                       ))}
                     </div>
@@ -420,6 +455,27 @@ export function AgentCenter() {
                     </div>
                   </div>
                 )}
+                {selected.status === "completed" &&
+                  ["success", "partial"].includes(selected.outcome) &&
+                  !data.playbooks.some((playbook) => playbook.sourceRunId === selected.id) && (
+                    <div className="mt-5 flex flex-col gap-3 rounded-2xl border border-cyan-300/10 bg-cyan-300/[.025] p-4 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <div className="flex items-center gap-2 text-sm font-medium text-cyan-100">
+                          <BookMarked size={16} /> Reuse this workflow
+                        </div>
+                        <p className="mt-1 text-sm text-[#756e62]">
+                          Save the run as a supervised playbook for similar objectives.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        className="btn-ghost shrink-0 text-sm"
+                        onClick={() => void command(selected, { command: "promote" })}
+                      >
+                        <Workflow size={15} /> Save playbook
+                      </button>
+                    </div>
+                  )}
               </>
             ) : (
               <p className="mt-5 text-sm leading-7 text-[#81796c]">
@@ -457,6 +513,46 @@ export function AgentCenter() {
                 </button>
               ))}
               {!data.runs.length && <p className="text-sm text-[#756e62]">No runs yet.</p>}
+            </div>
+          </section>
+
+          <section className="panel rounded-3xl p-5 md:p-6">
+            <div className="flex items-center gap-3">
+              <Workflow size={18} className="text-cyan-200" />
+              <div>
+                <p className="eyebrow">Workflow library</p>
+                <h2 className="font-display mt-1 text-2xl">Reusable playbooks</h2>
+              </div>
+            </div>
+            <div className="mt-5 space-y-3">
+              {data.playbooks.slice(0, 8).map((playbook) => (
+                <div key={playbook.id} className="rounded-2xl border border-white/[.05] bg-white/[.012] p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="text-sm text-[#c7d3cf]">{playbook.name}</div>
+                      <div className="mt-1 text-xs text-[#655f56]">
+                        Used {playbook.usageCount}× · {Math.round(playbook.confidence * 100)}% confidence
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => void removePlaybook(playbook)}
+                      className="text-[#625c53] transition hover:text-red-200"
+                      aria-label={`Remove ${playbook.name} playbook`}
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                  <div className="mt-3 text-xs text-[#746d62]">
+                    {playbook.steps.length} steps · {playbook.skillIds.length} skills
+                  </div>
+                </div>
+              ))}
+              {!data.playbooks.length && (
+                <p className="text-sm leading-6 text-[#756e62]">
+                  Rate a completed run as worked or partial, then save it as a reusable playbook.
+                </p>
+              )}
             </div>
           </section>
         </div>

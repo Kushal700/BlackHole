@@ -5,10 +5,12 @@ import { guard } from "@/lib/http";
 import {
   buildGroundedAgentResult,
   buildLearningRecord,
+  createPlaybookFromRun,
 } from "@/lib/agent";
 import { executeActionProposal } from "@/lib/action-executor";
 import {
   completeAgentRun,
+  createAgentPlaybook,
   deleteAgentRun,
   markSkillMemoriesUsed,
   readStore,
@@ -24,6 +26,10 @@ const commandSchema = z.discriminatedUnion("command", [
     command: z.literal("feedback"),
     outcome: z.enum(["success", "partial", "failed"]),
     feedback: z.string().trim().max(2000).optional(),
+  }),
+  z.object({
+    command: z.literal("promote"),
+    name: z.string().trim().min(3).max(120).optional(),
   }),
 ]);
 
@@ -57,6 +63,20 @@ export async function PATCH(
       parsed.data.feedback,
     );
     return NextResponse.json(updated);
+  }
+
+  if (parsed.data.command === "promote") {
+    try {
+      const playbook = await createAgentPlaybook(
+        createPlaybookFromRun(run, parsed.data.name),
+      );
+      return NextResponse.json(playbook, { status: 201 });
+    } catch (error) {
+      return NextResponse.json(
+        { error: error instanceof Error ? error.message : "Could not create playbook." },
+        { status: 409 },
+      );
+    }
   }
 
   if (run.status !== "awaiting_approval")

@@ -6,6 +6,7 @@ import {
   buildAgentRun,
   filterSkillPool,
   rankLearningRecords,
+  rankPlaybooks,
   rerankSkillsWithExperience,
 } from "@/lib/agent";
 import { rankMemoryChunks } from "@/lib/semantic";
@@ -23,6 +24,7 @@ export async function GET() {
   const store = await readStore();
   const runs = (store.agentRuns || []).slice(0, 30);
   const learningRecords = (store.learningRecords || []).slice(0, 40);
+  const playbooks = (store.agentPlaybooks || []).slice(0, 30);
   const rated = runs.filter((run) => run.outcome !== "unrated");
   const successful = rated.filter((run) => run.outcome === "success").length;
   const skillScores = (store.skillScores || [])
@@ -38,6 +40,7 @@ export async function GET() {
   return NextResponse.json({
     runs,
     learningRecords,
+    playbooks,
     skillScores,
     projects: store.projects,
     activeProjectId: store.activeProjectId,
@@ -48,6 +51,7 @@ export async function GET() {
       ratedRuns: rated.length,
       successRate: rated.length ? Math.round((successful / rated.length) * 100) : 0,
       strengthenedSkills: skillScores.length,
+      playbooks: playbooks.length,
     },
   });
 }
@@ -90,6 +94,11 @@ export async function POST(request: NextRequest) {
     lessons: rankLearningRecords(
       parsed.data.goal,
       store.learningRecords || [],
+      projectId,
+    ),
+    playbooks: rankPlaybooks(
+      parsed.data.goal,
+      store.agentPlaybooks || [],
       projectId,
     ),
   });

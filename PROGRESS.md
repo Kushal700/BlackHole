@@ -49,6 +49,9 @@ Last updated: 2026-11-22
 - [x] Experience-aware skill reranking with bounded confidence weighting and semantic relevance preserved
 - [x] Visible applied-lesson provenance, written feedback capture, and reversible run forgetting
 - [x] Integration test proving a correction is retrieved by the next related Roblox objective
+- [x] Durable supervised playbooks promoted from rated runs with preserved workflow steps and skills
+- [x] Project-scoped semantic playbook matching with visible provenance, confidence, and usage counts
+- [x] Reversible playbook deletion and full create → promote → reuse integration verification
 - [x] Type check, lint, and production build validation
 
 ## Deliberate deployment follow-ups
