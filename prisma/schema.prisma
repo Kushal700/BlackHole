@@ -1,0 +1,132 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model BlackholeState {
+  id        Int      @id
+  payload   Json
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("blackhole_state")
+}
+
+model MemoryVector {
+  memoryId  String   @id @map("memory_id")
+  ownerId   String   @default("owner") @map("owner_id")
+  title     String
+  content   String
+  category  String
+  embedding Unsupported("vector")?
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([ownerId])
+  @@map("memory_vectors")
+}
+
+model User {
+  id          String       @id @default(uuid())
+  email       String       @unique
+  passwordHash String      @map("password_hash")
+  memories   Memory[]
+  projects   Project[]
+  tasks      Task[]
+  imports    ImportRecord[]
+  createdAt  DateTime     @default(now()) @map("created_at")
+  updatedAt  DateTime     @updatedAt @map("updated_at")
+
+  @@map("users")
+}
+
+model Memory {
+  id          String       @id @default(uuid())
+  ownerId     String       @map("owner_id")
+  owner       User         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  title       String
+  content     String
+  category    String
+  tags        String[]
+  source      String
+  sourceUrl   String?      @map("source_url")
+  projectId   String?      @map("project_id")
+  project     Project?     @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  archived    Boolean      @default(false)
+  embedding   Unsupported("vector")?
+  outgoing    Connection[] @relation("ConnectionSource")
+  incoming    Connection[] @relation("ConnectionTarget")
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+
+  @@index([ownerId, archived, updatedAt])
+  @@map("memories")
+}
+
+model Connection {
+  id          String   @id @default(uuid())
+  sourceId    String   @map("source_id")
+  targetId    String   @map("target_id")
+  source      Memory   @relation("ConnectionSource", fields: [sourceId], references: [id], onDelete: Cascade)
+  target      Memory   @relation("ConnectionTarget", fields: [targetId], references: [id], onDelete: Cascade)
+  type        String
+  score       Float
+  automatic   Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@unique([sourceId, targetId, type])
+  @@map("connections")
+}
+
+model Project {
+  id          String   @id @default(uuid())
+  ownerId     String   @map("owner_id")
+  owner       User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  name        String
+  summary     String
+  goal        String
+  status      String
+  progress    Int      @default(0)
+  memories    Memory[]
+  tasks       Task[]
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([ownerId, status])
+  @@map("projects")
+}
+
+model Task {
+  id          String   @id @default(uuid())
+  ownerId     String   @map("owner_id")
+  owner       User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  projectId   String?  @map("project_id")
+  project     Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  title       String
+  description String
+  status      String
+  priority    String
+  dueDate     DateTime? @map("due_date")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([ownerId, status])
+  @@map("tasks")
+}
+
+model ImportRecord {
+  id             String   @id @default(uuid())
+  ownerId        String   @map("owner_id")
+  owner          User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  fileName       String   @map("file_name")
+  type           String
+  status         String
+  importedCount  Int      @map("imported_count")
+  duplicateCount Int      @map("duplicate_count")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([ownerId, createdAt])
+  @@map("import_records")
+}

@@ -1,0 +1,22 @@
+"use client";
+
+import { FormEvent, useEffect, useState } from "react";
+import { CalendarDays, Circle, CircleCheck, Plus } from "lucide-react";
+import type { Project, Task } from "@/lib/types";
+import { PageHeader } from "@/components/ui";
+
+const columns: { id: Task["status"]; label: string }[] = [{ id: "todo", label: "To do" }, { id: "in_progress", label: "In progress" }, { id: "done", label: "Done" }];
+export function Tasks() {
+  const [data, setData] = useState<{ tasks: Task[]; projects: Project[] }>({ tasks: [], projects: [] });
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState({ title: "", description: "", priority: "medium", projectId: "", dueDate: "" });
+  async function load() { const response = await fetch("/api/tasks"); if (response.ok) setData(await response.json()); }
+  useEffect(() => { fetch("/api/tasks").then((response) => response.json()).then(setData); }, []);
+  async function create(event: FormEvent) { event.preventDefault(); await fetch("/api/tasks", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...form, projectId: form.projectId || undefined, dueDate: form.dueDate || undefined, status: "todo" }) }); setOpen(false); setForm({ title: "", description: "", priority: "medium", projectId: "", dueDate: "" }); load(); }
+  async function change(task: Task, status: Task["status"]) { await fetch(`/api/tasks/${task.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status }) }); load(); }
+  return <>
+    <PageHeader eyebrow="Task manager" title="What needs your attention?" description="Tasks stay linked to the projects and knowledge that give them context." actions={<button className="btn-gold text-xs" onClick={() => setOpen(!open)}><Plus size={15} /> Add task</button>} />
+    {open && <form onSubmit={create} className="panel mb-6 grid gap-4 rounded-2xl p-5 md:grid-cols-2"><input required className="input" placeholder="Task title" value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} /><input className="input" placeholder="Description" value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} /><select className="input" value={form.priority} onChange={(event) => setForm({ ...form, priority: event.target.value })}><option>low</option><option>medium</option><option>high</option></select><select className="input" value={form.projectId} onChange={(event) => setForm({ ...form, projectId: event.target.value })}><option value="">No project</option>{data.projects.map((project) => <option value={project.id} key={project.id}>{project.name}</option>)}</select><input className="input" type="date" value={form.dueDate} onChange={(event) => setForm({ ...form, dueDate: event.target.value })} /><button className="btn-gold">Create task</button></form>}
+    <div className="grid gap-5 xl:grid-cols-3">{columns.map((column) => <section key={column.id} className="panel min-h-72 rounded-3xl p-4"><div className="flex items-center justify-between px-1 pb-4"><div className="flex items-center gap-2 text-sm">{column.id === "done" ? <CircleCheck size={16} className="text-emerald-400" /> : <Circle size={16} className="text-amber-300/70" />}{column.label}</div><span className="rounded-full bg-white/[.05] px-2 py-0.5 text-[10px] text-[#7e7668]">{data.tasks.filter((item) => item.status === column.id).length}</span></div><div className="space-y-3">{data.tasks.filter((item) => item.status === column.id).map((task) => <article key={task.id} className="rounded-2xl border border-white/[.055] bg-black/20 p-4"><div className="flex justify-between gap-2"><h3 className={`text-sm ${task.status === "done" ? "text-[#777063] line-through" : "text-[#d2c8b7]"}`}>{task.title}</h3><span className={`h-2 w-2 shrink-0 rounded-full ${task.priority === "high" ? "bg-red-400" : task.priority === "medium" ? "bg-amber-300" : "bg-sky-300"}`} /></div><p className="mt-2 text-[11px] leading-5 text-[#746d60]">{task.description}</p>{task.dueDate && <div className="mt-3 flex items-center gap-1.5 text-[9px] text-[#82796a]"><CalendarDays size={11} /> {task.dueDate}</div>}<div className="mt-4 flex gap-1">{columns.filter((item) => item.id !== column.id).map((target) => <button key={target.id} onClick={() => change(task, target.id)} className="rounded-md border border-white/[.06] px-2 py-1 text-[8px] uppercase text-[#766f62] hover:text-amber-200">→ {target.label}</button>)}</div></article>)}</div></section>)}</div>
+  </>;
+}

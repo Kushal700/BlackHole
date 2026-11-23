@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_USER: blackhole
+      POSTGRES_PASSWORD: blackhole
+      POSTGRES_DB: blackhole
+    ports:
+      - "5432:5432"
+    volumes:
+      - blackhole_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U blackhole"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  blackhole_postgres:
+

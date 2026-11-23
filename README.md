@@ -1,0 +1,68 @@
+# BlackHole
+
+BlackHole is a private, AI-powered second brain built around a cinematic 3D knowledge universe. It stores memories, connects related ideas, retrieves grounded context for chat, and keeps projects and tasks attached to the knowledge behind them.
+
+## What works
+
+- Persistent memory CRUD, archive, semantic search, tags, categories, sources, and JSON/Markdown export
+- Citation-first AI chat with retrieval-augmented generation and a no-key local fallback
+- Automatic embedding-based connections plus editable connection APIs
+- Interactive Three.js / React Three Fiber universe with real memory stars, clusters, lines, filters, orbit controls, and memory navigation
+- Dashboard, projects, progress, tasks, document importer, import history, settings, and data deletion
+- TXT, Markdown, PDF, DOCX, JSON, CSV, and Obsidian ZIP imports with exact duplicate detection
+- Server-side password protection with an HTTP-only signed cookie
+- Immediate local JSON persistence and optional PostgreSQL + pgvector persistence
+
+## Quick start on Windows
+
+Requirements: Node.js 20.9 or newer. Node.js 24 is recommended.
+
+```powershell
+git clone https://github.com/Kushal700/BlackHole.git
+cd BlackHole
+npm install
+npm run dev
+```
+
+Open `http://localhost:3000`. No service or API key is required for local mode; data is saved to `data/blackhole.json` and survives restarts.
+
+## Configuration
+
+Copy `.env.example` to `.env.local` and set only the services you want:
+
+```powershell
+Copy-Item .env.example .env.local
+```
+
+- `APP_PASSWORD`: enables the owner login screen.
+- `AUTH_SECRET`: strengthens signed session cookies; use a random value of at least 32 characters.
+- `OPENAI_API_KEY`: enables OpenAI embeddings and synthesized RAG answers. Without it, deterministic local vectors and citation-first extractive answers remain available.
+- `DATABASE_URL`: moves persistence to PostgreSQL and mirrors embeddings into pgvector. Without it, the local JSON store is used.
+- `OPENAI_CHAT_MODEL` and `OPENAI_EMBEDDING_MODEL`: optional model overrides.
+
+API keys are used only in server routes and are never exposed to client code.
+
+## PostgreSQL + pgvector
+
+Docker Desktop provides the shortest local path:
+
+```powershell
+docker compose up -d
+Copy-Item .env.example .env.local
+```
+
+Then uncomment `DATABASE_URL` in `.env.local` and restart the development server. The application initializes its durable state and pgvector tables automatically. A normalized reference schema and SQL migration are included under `prisma/` for teams that later want fully relational storage.
+
+## Verification
+
+```powershell
+npm test
+npm run lint
+npm run build
+```
+
+## Privacy notes
+
+- For private use, set `APP_PASSWORD` and protect the Windows account/disk that stores the local data file.
+- For deployment, use PostgreSQL with TLS, a unique `AUTH_SECRET`, a strong owner password, and platform secret storage.
+- Export before using **Delete everything** in Settings; deletion is permanent.
