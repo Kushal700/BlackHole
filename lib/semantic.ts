@@ -46,6 +46,21 @@ export async function createEmbedding(value: string) {
   }
 }
 
+export async function createEmbeddings(values: string[]) {
+  if (!values.length) return [];
+  if (!process.env.OPENAI_API_KEY) return values.map(localEmbedding);
+  try {
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const result = await openai.embeddings.create({
+      model: process.env.OPENAI_EMBEDDING_MODEL || "text-embedding-3-small",
+      input: values.map((value) => value.slice(0, 8000)),
+    });
+    return result.data.sort((left, right) => left.index - right.index).map((item) => item.embedding);
+  } catch {
+    return values.map(localEmbedding);
+  }
+}
+
 export function cosineSimilarity(left: number[], right: number[]) {
   const length = Math.min(left.length, right.length);
   let dot = 0;
@@ -74,4 +89,3 @@ export function rankMemories(query: string, memories: Memory[], queryEmbedding?:
     })
     .sort((left, right) => right.score - left.score);
 }
-

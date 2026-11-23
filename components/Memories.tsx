@@ -12,6 +12,7 @@ const blank = { title: "", content: "", category: "note" as MemoryCategory, tags
 
 export function Memories() {
   const params = useSearchParams();
+  const skillMode = params.get("type") === "skill";
   const [data, setData] = useState<ResponseData>({ memories: [], connections: [], projects: [] });
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState(params.get("q") || "");
@@ -20,7 +21,7 @@ export function Memories() {
   const [selected, setSelected] = useState<Memory | null>(null);
   const [editing, setEditing] = useState(false);
   const [createOpen, setCreateOpen] = useState(params.get("new") === "true");
-  const [form, setForm] = useState(blank);
+  const [form, setForm] = useState(skillMode ? { ...blank, category: "document" as MemoryCategory, tags: "skill, learned-skill", source: "Taught to BlackHole" } : blank);
   const [saving, setSaving] = useState(false);
   const selectedParam = params.get("id");
 

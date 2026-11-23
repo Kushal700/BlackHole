@@ -1,4 +1,6 @@
-@import "tailwindcss";
+@import "tailwindcss" source(none);
+@source "./";
+@source "../components";
 
 :root {
   --ink: #080705;
@@ -69,4 +71,3 @@ button, a { -webkit-tap-highlight-color: transparent; }
 @media (max-width: 900px) {
   .app-main { padding-left: 0 !important; }
 }
-

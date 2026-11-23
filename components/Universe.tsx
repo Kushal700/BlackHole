@@ -29,7 +29,7 @@ export function Universe() {
   }, []);
 
   const visible = useMemo(() => memories.filter((memory) =>
-    (filter === "all" || memory.category === filter) &&
+    (filter === "all" || (filter === "skills" ? memory.tags.includes("skill") : memory.category === filter)) &&
     (!query || `${memory.title} ${memory.content} ${memory.tags.join(" ")}`.toLowerCase().includes(query.toLowerCase()))
   ), [filter, memories, query]);
   const visibleIds = useMemo(() => new Set(visible.map((item) => item.id)), [visible]);
@@ -66,7 +66,7 @@ export function Universe() {
       <button onClick={() => setControlsOpen((value) => !value)} className="flex items-center gap-2 rounded-full border border-white/[.08] bg-black/55 px-3 py-2 text-[9px] uppercase tracking-[.12em] text-white/48 backdrop-blur-xl transition hover:text-white/80"><SlidersHorizontal size={12} /> Explore <span className="text-white/25">{visible.length}</span></button>
       {controlsOpen && <div className="absolute bottom-12 left-0 w-[min(330px,calc(100vw-40px))] rounded-2xl border border-white/[.08] bg-[#070707e8] p-3 shadow-2xl backdrop-blur-2xl">
         <label className="relative block"><Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" /><input className="w-full rounded-xl border border-white/[.08] bg-white/[.025] py-2.5 pl-9 pr-3 text-xs text-white/80 outline-none placeholder:text-white/24 focus:border-amber-100/25" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Find a memory…" /></label>
-        <div className="mt-3 flex flex-wrap gap-1.5">{["all", ...MEMORY_CATEGORIES].map((item) => <button key={item} onClick={() => setFilter(item)} className={`rounded-full border px-2.5 py-1 text-[8px] uppercase tracking-wider transition ${filter === item ? "border-amber-100/25 bg-amber-100/10 text-amber-100" : "border-white/[.07] text-white/30 hover:text-white/60"}`}>{item}</button>)}</div>
+        <div className="mt-3 flex flex-wrap gap-1.5">{["all", "skills", ...MEMORY_CATEGORIES].map((item) => <button key={item} onClick={() => setFilter(item)} className={`rounded-full border px-2.5 py-1 text-[8px] uppercase tracking-wider transition ${filter === item ? "border-amber-100/25 bg-amber-100/10 text-amber-100" : "border-white/[.07] text-white/30 hover:text-white/60"}`}>{item}</button>)}</div>
       </div>}
     </div>
 
@@ -80,4 +80,3 @@ export function Universe() {
     </aside>}
   </div>;
 }
-

@@ -5,13 +5,14 @@ import { usePathname, useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 import {
   Atom, BrainCircuit, CircleUserRound, FolderKanban, Import, LayoutDashboard,
-  Library, Menu, MessageCircleMore, Search, Settings, Sparkles, X, ListTodo,
+  GraduationCap, Library, Menu, MessageCircleMore, Search, Settings, Sparkles, X, ListTodo,
 } from "lucide-react";
 
 const navigation = [
   { href: "/", label: "Overview", icon: LayoutDashboard },
   { href: "/universe", label: "Universe", icon: Atom },
   { href: "/memories", label: "Memories", icon: Library },
+  { href: "/skills", label: "Skills", icon: GraduationCap },
   { href: "/chat", label: "Ask BlackHole", icon: MessageCircleMore },
   { href: "/projects", label: "Projects", icon: FolderKanban },
   { href: "/tasks", label: "Tasks", icon: ListTodo },
@@ -51,6 +52,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [search, setSearch] = useState("");
   const [auth, setAuth] = useState<{ authenticated: boolean; configured: boolean } | null>(null);
   useEffect(() => { fetch("/api/auth/status").then((response) => response.json()).then(setAuth); }, []);
+  useEffect(() => {
+    if (!auth || (auth.configured && !auth.authenticated)) return;
+    fetch("/api/skills", { method: "POST" }).catch(() => undefined);
+  }, [auth]);
   function submitSearch(event: FormEvent) {
     event.preventDefault();
     if (!search.trim()) return;

@@ -12,6 +12,7 @@ BlackHole is a private, AI-powered second brain built around a cinematic 3D know
 - TXT, Markdown, PDF, DOCX, JSON, CSV, and Obsidian ZIP imports with exact duplicate detection
 - Server-side password protection with an HTTP-only signed cookie
 - Immediate local JSON persistence and optional PostgreSQL + pgvector persistence
+- Persistent skill memory that automatically mirrors installed Codex and plugin skills into the universe
 
 ## Quick start on Windows
 
@@ -47,6 +48,7 @@ Copy-Item .env.example .env.local
 - `OPENAI_API_KEY`: enables OpenAI embeddings and synthesized RAG answers. Without it, deterministic local vectors and citation-first extractive answers remain available.
 - `DATABASE_URL`: moves persistence to PostgreSQL and mirrors embeddings into pgvector. Without it, the local JSON store is used.
 - `OPENAI_CHAT_MODEL` and `OPENAI_EMBEDDING_MODEL`: optional model overrides.
+- `BLACKHOLE_SKILL_ROOTS`: optional extra folders containing `SKILL.md` files. Installed Codex skills are detected automatically.
 
 API keys are used only in server routes and are never exposed to client code.
 

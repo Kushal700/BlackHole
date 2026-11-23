@@ -20,7 +20,7 @@ function Get-AppRuntime {
 function Open-BlackHole([int]$port) {
   $url = "http://localhost:$port/universe"
   $appRuntime = Get-AppRuntime
-  $appProfile = Join-Path $dataDirectory "desktop-app-profile"
+  $appProfile = Join-Path $env:LOCALAPPDATA "BlackHole\WebViewProfile"
 
   if ($appRuntime) {
     New-Item -ItemType Directory -Force -Path $appProfile | Out-Null
