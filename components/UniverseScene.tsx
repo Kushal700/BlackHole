@@ -15,6 +15,13 @@ type VisualNode = {
   scale: number;
 };
 
+type VisualCluster = {
+  id: string;
+  label: string;
+  position: [number, number, number];
+  count: number;
+};
+
 function seeded(seed: string) {
   let value = [...seed].reduce((sum, character) => sum + character.charCodeAt(0), 1);
   return () => {
@@ -23,38 +30,75 @@ function seeded(seed: string) {
   };
 }
 
+function classifyMemory(memory: Memory) {
+  const signal = `${memory.title} ${memory.tags.join(" ")}`.toLowerCase();
+  if (memory.tags.includes("skill")) {
+    if (signal.includes("roblox")) return { id: "skill-roblox", label: "Roblox skills" };
+    if (/youtube|vidiq|video|descript/.test(signal)) return { id: "skill-media", label: "Media skills" };
+    if (/spreadsheet|excel|document|pdf|presentation|page/.test(signal)) return { id: "skill-documents", label: "Document skills" };
+    if (/browser|chrome|computer|cloud|site|hosting|automation/.test(signal)) return { id: "skill-automation", label: "Web & automation" };
+    if (/image|visual|design|pet/.test(signal)) return { id: "skill-creative", label: "Creative skills" };
+    if (/openai|plugin|skill creator|skill installer|review agent/.test(signal)) return { id: "skill-system", label: "Codex system" };
+    return { id: "skill-general", label: "General skills" };
+  }
+  if (memory.projectId?.toLowerCase().includes("roblox")) return { id: "project-roblox", label: "Roblox project" };
+  if (memory.projectId?.toLowerCase().includes("blackhole")) return { id: "project-blackhole", label: "BlackHole project" };
+  return { id: `memory-${memory.category}`, label: `${memory.category[0].toUpperCase()}${memory.category.slice(1)} memories` };
+}
+
 function buildNodes(memories: Memory[]) {
   const nodes: VisualNode[] = [];
-  const total = Math.max(memories.length, 1);
-  memories.forEach((memory, memoryIndex) => {
-    const random = seeded(memory.id);
-    const vertical = total === 1 ? 0 : (memoryIndex / (total - 1) - 0.5) * 11.5;
-    const side = memoryIndex % 2 === 0 ? -1 : 1;
-    const center: [number, number, number] = [
-      side * (1.15 + random() * 2.45),
-      vertical + (random() - 0.5) * 1.6,
-      (random() - 0.5) * 4.6,
-    ];
-    nodes.push({ id: `${memory.id}-primary`, memory, position: center, primary: true, scale: 1.9 });
+  const clusters: VisualCluster[] = [];
+  const grouped = new Map<string, { label: string; memories: Memory[] }>();
+  for (const memory of memories) {
+    const group = classifyMemory(memory);
+    const current = grouped.get(group.id) || { label: group.label, memories: [] };
+    current.memories.push(memory);
+    grouped.set(group.id, current);
+  }
 
-    const fragments = Math.min(42, Math.max(22, Math.round(memory.content.length / 20)));
-    for (let fragmentIndex = 0; fragmentIndex < fragments; fragmentIndex += 1) {
-      const angle = random() * Math.PI * 2;
-      const radius = 0.2 + Math.pow(random(), 0.68) * 2.25;
-      nodes.push({
-        id: `${memory.id}-${fragmentIndex}`,
-        memory,
-        position: [
-          center[0] + Math.cos(angle) * radius * (0.8 + random() * 0.7),
-          center[1] + Math.sin(angle) * radius * (0.65 + random() * 0.8),
-          center[2] + (random() - 0.5) * 2.8,
-        ],
-        primary: false,
-        scale: 0.38 + random() * 0.76,
-      });
-    }
+  const groups = [...grouped.entries()].sort(([left], [right]) => left.localeCompare(right));
+  const groupCount = Math.max(groups.length, 1);
+  groups.forEach(([groupId, group], groupIndex) => {
+    const orbit = groupIndex / groupCount * Math.PI * 2 - Math.PI / 2;
+    const ring = 6.4 + (groupIndex % 2) * 1.45;
+    const anchor: [number, number, number] = [
+      Math.cos(orbit) * ring * 1.22,
+      Math.sin(orbit) * ring * 0.78 - 0.35,
+      -1.2 + (groupIndex % 3 - 1) * 0.8,
+    ];
+    clusters.push({ id: groupId, label: group.label, position: anchor, count: group.memories.length });
+
+    group.memories.forEach((memory, memoryIndex) => {
+      const random = seeded(memory.id);
+      const memberAngle = memoryIndex * 2.3999632297 + random() * 0.45;
+      const memberRadius = memoryIndex === 0 ? 0 : 0.52 + Math.sqrt(memoryIndex) * 0.38;
+      const center: [number, number, number] = [
+        anchor[0] + Math.cos(memberAngle) * memberRadius * 1.22,
+        anchor[1] + Math.sin(memberAngle) * memberRadius * 0.82,
+        anchor[2] + (random() - 0.5) * 2.2,
+      ];
+      nodes.push({ id: `${memory.id}-primary`, memory, position: center, primary: true, scale: memories.length > 35 ? 1.5 : 1.85 });
+
+      const fragments = memories.length > 60 ? 4 : memories.length > 30 ? 7 : Math.min(18, Math.max(9, Math.round(memory.content.length / 180)));
+      for (let fragmentIndex = 0; fragmentIndex < fragments; fragmentIndex += 1) {
+        const angle = random() * Math.PI * 2;
+        const radius = 0.14 + Math.pow(random(), 0.72) * (memories.length > 35 ? 0.72 : 1.15);
+        nodes.push({
+          id: `${memory.id}-${fragmentIndex}`,
+          memory,
+          position: [
+            center[0] + Math.cos(angle) * radius,
+            center[1] + Math.sin(angle) * radius * 0.78,
+            center[2] + (random() - 0.5) * radius,
+          ],
+          primary: false,
+          scale: 0.28 + random() * 0.46,
+        });
+      }
+    });
   });
-  return nodes;
+  return { nodes, clusters };
 }
 
 function AccretionDisk() {
@@ -218,12 +262,14 @@ function OrbitalArcs() {
   return <group>{arcs.map((arc, index) => <group key={index}><primitive object={arc.line} /><mesh position={arc.beacon}><sphereGeometry args={[0.065, 10, 10]} /><meshBasicMaterial color="#fff4d6" toneMapped={false} /></mesh><sprite position={arc.beacon} scale={[0.65, 0.65, 1]}><spriteMaterial map={glowTexture} color="#fff4d6" transparent opacity={0.48} blending={THREE.AdditiveBlending} depthWrite={false} /></sprite></group>)}</group>;
 }
 
-function MemoryGraph({ nodes, connections, onSelect }: { nodes: VisualNode[]; connections: Connection[]; onSelect: (memory: Memory) => void }) {
+function MemoryGraph({ nodes, clusters, connections, onSelect }: { nodes: VisualNode[]; clusters: VisualCluster[]; connections: Connection[]; onSelect: (memory: Memory) => void }) {
   const mesh = useRef<THREE.InstancedMesh>(null);
   const [hovered, setHovered] = useState<number | null>(null);
   const glowTexture = useMemo(() => createGlowTexture(), []);
   const primaryNodes = useMemo(() => nodes.filter((node) => node.primary), [nodes]);
   const primaryMap = useMemo(() => new Map(primaryNodes.map((node) => [node.memory.id, node])), [primaryNodes]);
+  const hoveredNode = hovered === null ? undefined : nodes[hovered];
+  const hoveredPrimary = hoveredNode ? primaryMap.get(hoveredNode.memory.id) : undefined;
   const linePositions = useMemo(() => {
     const values: number[] = [];
     nodes.forEach((node, index) => {
@@ -231,13 +277,18 @@ function MemoryGraph({ nodes, connections, onSelect }: { nodes: VisualNode[]; co
       const primary = primaryMap.get(node.memory.id);
       if (primary) values.push(...primary.position, ...node.position);
     });
-    for (const connection of connections) {
+    const calmConnections = primaryNodes.length <= 30
+      ? connections
+      : hoveredNode
+        ? connections.filter((connection) => connection.sourceId === hoveredNode.memory.id || connection.targetId === hoveredNode.memory.id)
+        : [...connections].sort((left, right) => right.score - left.score).slice(0, 28);
+    for (const connection of calmConnections) {
       const source = primaryMap.get(connection.sourceId);
       const target = primaryMap.get(connection.targetId);
       if (source && target) values.push(...source.position, ...target.position);
     }
     return new Float32Array(values);
-  }, [connections, nodes, primaryMap]);
+  }, [connections, hoveredNode, nodes, primaryMap, primaryNodes.length]);
 
   useLayoutEffect(() => {
     if (!mesh.current) return;
@@ -249,7 +300,7 @@ function MemoryGraph({ nodes, connections, onSelect }: { nodes: VisualNode[]; co
       const scale = node.scale * (highlightedMemory && hovered !== null ? 1.55 : 1);
       matrix.compose(new THREE.Vector3(...node.position), new THREE.Quaternion(), new THREE.Vector3(scale, scale, scale));
       mesh.current!.setMatrixAt(index, matrix);
-      color.set(categoryColors[node.memory.category]);
+      color.set(node.memory.tags.includes("skill") ? "#edc06a" : categoryColors[node.memory.category]);
       color.lerp(memoryWhite, 0.72);
       if (!highlightedMemory) color.multiplyScalar(0.32);
       mesh.current!.setColorAt(index, color);
@@ -280,16 +331,20 @@ function MemoryGraph({ nodes, connections, onSelect }: { nodes: VisualNode[]; co
       <meshBasicMaterial toneMapped={false} />
     </instancedMesh>
     {primaryNodes.map((node) => <group key={node.id} position={node.position}>
-      <sprite scale={[0.82, 0.82, 1]}><spriteMaterial map={glowTexture} color={categoryColors[node.memory.category]} transparent opacity={0.33} blending={THREE.AdditiveBlending} depthWrite={false} /></sprite>
-      <Html center distanceFactor={13} style={{ pointerEvents: "none" }}>
-        <div className="whitespace-nowrap rounded-full border border-white/10 bg-black/55 px-2 py-1 text-[8px] tracking-wide text-[#d4cec2] backdrop-blur-md">{node.memory.title}</div>
-      </Html>
+      <sprite scale={[0.82, 0.82, 1]}><spriteMaterial map={glowTexture} color={node.memory.tags.includes("skill") ? "#edc06a" : categoryColors[node.memory.category]} transparent opacity={0.33} blending={THREE.AdditiveBlending} depthWrite={false} /></sprite>
+      {primaryNodes.length <= 14 && <Html center distanceFactor={13} style={{ pointerEvents: "none" }}><div className="whitespace-nowrap rounded-full border border-white/10 bg-black/55 px-2 py-1 text-[8px] tracking-wide text-[#d4cec2] backdrop-blur-md">{node.memory.title}</div></Html>}
     </group>)}
+    {primaryNodes.length > 14 && clusters.map((cluster) => <Html key={cluster.id} position={cluster.position} center distanceFactor={15} style={{ pointerEvents: "none" }}>
+      <div className="whitespace-nowrap rounded-full border border-amber-100/10 bg-black/45 px-2.5 py-1.5 text-[8px] font-semibold uppercase tracking-[.14em] text-amber-50/45 backdrop-blur-md">{cluster.label}<span className="ml-2 text-amber-100/25">{cluster.count}</span></div>
+    </Html>)}
+    {primaryNodes.length > 14 && hoveredPrimary && <Html position={hoveredPrimary.position} center distanceFactor={11} style={{ pointerEvents: "none" }}>
+      <div className="max-w-56 whitespace-nowrap rounded-full border border-amber-100/20 bg-black/85 px-3 py-1.5 text-[9px] tracking-wide text-amber-50 shadow-[0_8px_30px_#000] backdrop-blur-xl">{hoveredPrimary.memory.title}</div>
+    </Html>}
   </>;
 }
 
 export default function UniverseScene({ memories, connections, onSelect }: { memories: Memory[]; connections: Connection[]; onSelect: (memory: Memory) => void }) {
-  const nodes = useMemo(() => buildNodes(memories), [memories]);
+  const map = useMemo(() => buildNodes(memories), [memories]);
   return <Canvas camera={{ position: [0, 0.8, 20.5], fov: 50 }} dpr={[1, 1.7]} gl={{ antialias: true, alpha: false, toneMapping: THREE.ACESFilmicToneMapping }}>
     <color attach="background" args={["#020202"]} />
     <fog attach="fog" args={["#020202", 20, 48]} />
@@ -298,7 +353,7 @@ export default function UniverseScene({ memories, connections, onSelect }: { mem
     <Dust />
     <OrbitalArcs />
     <BlackHole />
-    <MemoryGraph nodes={nodes} connections={connections} onSelect={onSelect} />
+    <MemoryGraph nodes={map.nodes} clusters={map.clusters} connections={connections} onSelect={onSelect} />
     <OrbitControls makeDefault enableDamping dampingFactor={0.04} minDistance={9} maxDistance={31} autoRotate autoRotateSpeed={0.1} target={[0, -0.4, 0]} />
   </Canvas>;
 }

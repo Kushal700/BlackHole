@@ -34,7 +34,6 @@ export function Universe() {
   ), [filter, memories, query]);
   const visibleIds = useMemo(() => new Set(visible.map((item) => item.id)), [visible]);
   const visibleConnections = connections.filter((item) => visibleIds.has(item.sourceId) && visibleIds.has(item.targetId));
-  const fragments = visible.reduce((sum, memory) => sum + Math.min(42, Math.max(22, Math.round(memory.content.length / 20))) + 1, 0);
 
   return <div className="relative h-screen min-h-[620px] overflow-hidden bg-black">
     <UniverseScene memories={visible} connections={visibleConnections} onSelect={setSelected} />
@@ -71,7 +70,7 @@ export function Universe() {
     </div>
 
     <div className="pointer-events-none absolute bottom-6 left-1/2 z-10 hidden -translate-x-1/2 items-center gap-3 rounded-full border border-white/[.06] bg-black/35 px-3 py-2 text-[8px] uppercase tracking-[.15em] text-white/25 backdrop-blur-lg sm:flex">
-      <span>{fragments} signals</span><span className="h-1 w-1 rounded-full bg-amber-100/35" /><span>{visibleConnections.length} links</span>
+      <span>{visible.length} memories</span><span className="h-1 w-1 rounded-full bg-amber-100/35" /><span>{visibleConnections.length} links</span>
     </div>
 
     {selected && <aside className="absolute bottom-3 right-3 top-3 z-30 w-[calc(100%-24px)] max-w-sm overflow-y-auto rounded-[26px] border border-white/[.09] bg-[#080807e8] p-6 shadow-[0_30px_90px_#000] backdrop-blur-2xl md:bottom-5 md:right-5 md:top-5">
