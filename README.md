@@ -28,7 +28,7 @@ Open `http://localhost:3000`. No service or API key is required for local mode; 
 
 ### One-click Windows launcher
 
-Run `scripts/Start-BlackHole.ps1` to start the production app quietly in the background and open the immersive universe. The launcher reuses an existing BlackHole server, finds another local port if port 3000 is busy, and prepares dependencies/build output automatically when needed. A Windows shortcut can target:
+Run `scripts/Start-BlackHole.ps1` to start the production app quietly in the background and open the immersive universe in a dedicated app window without browser tabs or an address bar. The launcher reuses an existing BlackHole server, finds another local port if port 3000 is busy, and prepares dependencies/build output automatically when needed. A Windows shortcut can target:
 
 ```text
 powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "<project>\scripts\Start-BlackHole.ps1"

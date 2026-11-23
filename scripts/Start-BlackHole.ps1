@@ -7,6 +7,38 @@ $stdoutLog = Join-Path $dataDirectory "blackhole-server.log"
 $stderrLog = Join-Path $dataDirectory "blackhole-server-error.log"
 $npmCommand = Join-Path (Split-Path -Parent (Get-Command node.exe).Source) "npm.cmd"
 
+function Get-AppRuntime {
+  $candidates = @(
+    (Join-Path ${env:ProgramFiles(x86)} "Microsoft\Edge\Application\msedge.exe"),
+    (Join-Path $env:ProgramFiles "Microsoft\Edge\Application\msedge.exe"),
+    (Join-Path $env:LOCALAPPDATA "Microsoft\Edge\Application\msedge.exe")
+  )
+
+  return $candidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+}
+
+function Open-BlackHole([int]$port) {
+  $url = "http://localhost:$port/universe"
+  $appRuntime = Get-AppRuntime
+  $appProfile = Join-Path $dataDirectory "desktop-app-profile"
+
+  if ($appRuntime) {
+    New-Item -ItemType Directory -Force -Path $appProfile | Out-Null
+    Start-Process -FilePath $appRuntime -ArgumentList @(
+      "--app=$url",
+      "--user-data-dir=$appProfile",
+      "--start-maximized",
+      "--no-first-run",
+      "--disable-background-mode"
+    )
+    return
+  }
+
+  # A normal browser is only used as a last-resort fallback on systems
+  # where the Windows app runtime is unavailable.
+  Start-Process $url
+}
+
 function Test-BlackHole([int]$port) {
   try {
     $response = Invoke-WebRequest -UseBasicParsing -Uri "http://127.0.0.1:$port/api/stats" -TimeoutSec 2
@@ -30,7 +62,7 @@ try {
 
   foreach ($candidatePort in $listenerPorts) {
     if (Test-BlackHole $candidatePort) {
-      Start-Process "http://localhost:$candidatePort/universe"
+      Open-BlackHole $candidatePort
       exit 0
     }
   }
@@ -65,7 +97,7 @@ try {
   }
   if (-not $ready) { throw "BlackHole took too long to start. See data\blackhole-server-error.log for details." }
 
-  Start-Process "http://localhost:$port/universe"
+  Open-BlackHole $port
 } catch {
   Show-LaunchError $_.Exception.Message
   exit 1
