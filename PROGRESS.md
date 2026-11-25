@@ -1,6 +1,6 @@
 # BlackHole progress
 
-Last updated: 2026-11-24
+Last updated: 2026-11-25
 
 ## Completed
 
@@ -14,6 +14,7 @@ Last updated: 2026-11-24
 - [x] RAG chat with source citations and explicit insufficient-evidence behavior
 - [x] Automatic semantic connections and manual connection endpoints
 - [x] Cinematic full-screen React Three Fiber universe with memory fragments, constellation lines, orbital arcs, procedural nebulae, and a luminous animated black hole
+- [x] Living-universe motion pass with GPU-buffer accretion flow, subtle polar jets, breathing core light, layered parallax drift, skill-reactive energy, and reduced-motion support
 - [x] Project pages, progress controls, goals, knowledge, tasks, and summaries
 - [x] Task board with status movement, priority, project, and due dates
 - [x] Markdown, TXT, PDF, DOCX, JSON, CSV, and Obsidian ZIP import

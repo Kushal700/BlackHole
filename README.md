@@ -8,7 +8,7 @@ BlackHole is a private, AI-powered second brain built around a cinematic 3D know
 - Heading-level hybrid retrieval with exact source sections, line references, and a citation-first no-key fallback
 - Confirmation-gated Jarvis actions for tasks, memories, project progress, and library sync, with an audit history
 - Automatic embedding-based connections plus editable connection APIs
-- Interactive Three.js / React Three Fiber universe with real memory stars, clusters, lines, filters, orbit controls, and memory navigation
+- Interactive Three.js / React Three Fiber universe with real memory stars, inward-flowing accretion particles, polar jets, breathing light, drifting nebulae, clusters, filters, orbit controls, and memory navigation
 - Dashboard, projects, progress, tasks, document importer, import history, settings, and data deletion
 - TXT, Markdown, PDF, DOCX, JSON, CSV, and Obsidian ZIP imports with exact duplicate detection
 - Server-side password protection with an HTTP-only signed cookie

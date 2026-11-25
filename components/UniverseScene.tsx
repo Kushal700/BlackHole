@@ -3,6 +3,7 @@
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Canvas, ThreeEvent, useFrame } from "@react-three/fiber";
 import { Html, OrbitControls } from "@react-three/drei";
+import { useReducedMotion } from "framer-motion";
 import * as THREE from "three";
 import type { Connection, Memory } from "@/lib/types";
 import { categoryColors } from "@/components/ui";
@@ -169,11 +170,26 @@ function buildNodes(memories: Memory[]) {
   return { nodes, clusters };
 }
 
-function AccretionDisk() {
+function AccretionDisk({
+  energy,
+  motionScale,
+}: {
+  energy: number;
+  motionScale: number;
+}) {
   const material = useRef<THREE.ShaderMaterial>(null);
-  const uniforms = useMemo(() => ({ uTime: { value: 0 } }), []);
+  const uniforms = useMemo(
+    () => ({ uTime: { value: 0 }, uEnergy: { value: 0 } }),
+    [],
+  );
   useFrame((_, delta) => {
-    if (material.current) material.current.uniforms.uTime.value += delta;
+    if (!material.current) return;
+    material.current.uniforms.uTime.value += delta * motionScale;
+    material.current.uniforms.uEnergy.value = THREE.MathUtils.lerp(
+      material.current.uniforms.uEnergy.value,
+      energy,
+      0.04,
+    );
   });
   return (
     <mesh rotation={[0, 0, -0.08]}>
@@ -190,6 +206,7 @@ function AccretionDisk() {
         `}
         fragmentShader={`
           uniform float uTime;
+          uniform float uEnergy;
           varying vec2 vUv;
           void main() {
             vec2 p = vUv - .5;
@@ -198,13 +215,16 @@ function AccretionDisk() {
             if (r < .28 || r > .93) discard;
             float inner = smoothstep(.28, .37, r);
             float outer = 1.0 - smoothstep(.58, .93, r);
-            float streaks = .58 + .42 * sin(a * 18.0 - uTime * 2.4 + r * 38.0);
-            float fine = .72 + .28 * sin(a * 47.0 + uTime * 1.3 - r * 91.0);
+            float spiral = a * 18.0 - uTime * (2.4 + uEnergy * 2.2) + r * 38.0;
+            float warp = sin(a * 5.0 + r * 22.0 - uTime * .8) * .12;
+            float streaks = .56 + .44 * sin(spiral + warp);
+            float fine = .70 + .30 * sin(a * 47.0 + uTime * 1.3 - r * 91.0);
+            float knots = .78 + .22 * sin(a * 9.0 - uTime * 3.1 + r * 17.0);
             float hot = 1.0 - smoothstep(.28, .64, r);
             vec3 amber = vec3(1.0, .42, .07);
             vec3 whiteHot = vec3(1.0, .93, .72);
-            vec3 color = mix(amber, whiteHot, hot) * (1.15 + hot * 2.2);
-            float alpha = inner * outer * (.25 + streaks * fine * .7);
+            vec3 color = mix(amber, whiteHot, hot) * (1.15 + hot * 2.2 + uEnergy * .7);
+            float alpha = inner * outer * (.22 + streaks * fine * knots * .76);
             gl_FragColor = vec4(color, alpha);
           }
         `}
@@ -213,16 +233,214 @@ function AccretionDisk() {
   );
 }
 
-function BlackHole() {
+function AccretionParticles({
+  energy,
+  motionScale,
+}: {
+  energy: number;
+  motionScale: number;
+}) {
+  const points = useRef<THREE.Points>(null);
+  const geometry = useMemo(() => {
+    const count = 820;
+    const positions = new Float32Array(count * 3);
+    const colors = new Float32Array(count * 3);
+    const random = seeded("living-accretion-colors-v1");
+    const amber = new THREE.Color("#ff8a24");
+    const white = new THREE.Color("#fff4cf");
+    const color = new THREE.Color();
+    for (let index = 0; index < count; index += 1) {
+      color.copy(amber).lerp(white, Math.pow(random(), 2.1));
+      colors[index * 3] = color.r;
+      colors[index * 3 + 1] = color.g;
+      colors[index * 3 + 2] = color.b;
+    }
+    const output = new THREE.BufferGeometry();
+    output.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+    output.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+    return output;
+  }, []);
+  const field = useRef<{
+    count: number;
+    radius: Float32Array;
+    angle: Float32Array;
+    speed: Float32Array;
+    phase: Float32Array;
+  } | null>(null);
+  if (field.current == null) {
+    const count = 820;
+    const radius = new Float32Array(count);
+    const angle = new Float32Array(count);
+    const speed = new Float32Array(count);
+    const phase = new Float32Array(count);
+    const random = seeded("living-accretion-v1");
+    for (let index = 0; index < count; index += 1) {
+      radius[index] = 0.76 + Math.pow(random(), 0.68) * 2.45;
+      angle[index] = random() * Math.PI * 2;
+      speed[index] = 0.42 + random() * 1.35;
+      phase[index] = random() * Math.PI * 2;
+    }
+    field.current = { count, radius, angle, speed, phase };
+  }
+
+  useFrame(({ clock }, delta) => {
+    const particles = field.current!;
+    if (!points.current) return;
+    const attribute = points.current.geometry.getAttribute(
+      "position",
+    ) as THREE.BufferAttribute;
+    const positions = attribute.array as Float32Array;
+    const flow = motionScale * (1 + energy * 1.25);
+    for (let index = 0; index < particles.count; index += 1) {
+      particles.angle[index] += delta * particles.speed[index] * flow;
+      particles.radius[index] -=
+        delta * (0.025 + particles.speed[index] * 0.018) * flow;
+      if (particles.radius[index] < 0.72) particles.radius[index] = 3.18;
+      const radius = particles.radius[index];
+      const angle = particles.angle[index];
+      const ripple =
+        Math.sin(clock.elapsedTime * 1.7 + particles.phase[index]) * 0.024;
+      positions[index * 3] = Math.cos(angle) * radius;
+      positions[index * 3 + 1] = Math.sin(angle) * radius * 0.39;
+      positions[index * 3 + 2] =
+        Math.sin(angle * 2 + particles.phase[index]) *
+          (0.035 + radius * 0.012) +
+        ripple;
+    }
+    attribute.needsUpdate = true;
+  });
+
+  return (
+    <points ref={points} geometry={geometry}>
+      <pointsMaterial
+        vertexColors
+        size={0.028}
+        transparent
+        opacity={0.82}
+        blending={THREE.AdditiveBlending}
+        depthWrite={false}
+        sizeAttenuation
+        toneMapped={false}
+      />
+    </points>
+  );
+}
+
+function PolarJets({ motionScale }: { motionScale: number }) {
+  const points = useRef<THREE.Points>(null);
+  const geometry = useMemo(() => {
+    const count = 180;
+    const positions = new Float32Array(count * 3);
+    const colors = new Float32Array(count * 3);
+    const random = seeded("polar-jet-colors-v1");
+    for (let index = 0; index < count; index += 1) {
+      const brightness = 0.38 + random() * 0.5;
+      colors[index * 3] = brightness;
+      colors[index * 3 + 1] = brightness * 0.76;
+      colors[index * 3 + 2] = brightness * 0.46;
+    }
+    const output = new THREE.BufferGeometry();
+    output.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+    output.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+    return output;
+  }, []);
+  const field = useRef<{
+    count: number;
+    progress: Float32Array;
+    speed: Float32Array;
+    phase: Float32Array;
+    direction: Float32Array;
+  } | null>(null);
+  if (field.current == null) {
+    const count = 180;
+    const progress = new Float32Array(count);
+    const speed = new Float32Array(count);
+    const phase = new Float32Array(count);
+    const direction = new Float32Array(count);
+    const random = seeded("polar-jets-v1");
+    for (let index = 0; index < count; index += 1) {
+      progress[index] = random();
+      speed[index] = 0.12 + random() * 0.3;
+      phase[index] = random() * Math.PI * 2;
+      direction[index] = index % 2 === 0 ? 1 : -1;
+    }
+    field.current = {
+      count,
+      progress,
+      speed,
+      phase,
+      direction,
+    };
+  }
+
+  useFrame(({ clock }, delta) => {
+    const particles = field.current!;
+    if (!points.current) return;
+    const attribute = points.current.geometry.getAttribute(
+      "position",
+    ) as THREE.BufferAttribute;
+    const positions = attribute.array as Float32Array;
+    for (let index = 0; index < particles.count; index += 1) {
+      particles.progress[index] +=
+        delta * particles.speed[index] * motionScale;
+      if (particles.progress[index] > 1) particles.progress[index] = 0;
+      const progress = particles.progress[index];
+      const spread = 0.025 + progress * 0.16;
+      const wave = clock.elapsedTime * 1.4 + particles.phase[index];
+      positions[index * 3] = Math.sin(wave) * spread;
+      positions[index * 3 + 1] =
+        particles.direction[index] * (0.82 + progress * 3.8);
+      positions[index * 3 + 2] =
+        Math.cos(wave * 0.83) * spread - 0.14;
+    }
+    attribute.needsUpdate = true;
+  });
+
+  return (
+    <points ref={points} geometry={geometry} rotation={[0, 0, -0.035]}>
+      <pointsMaterial
+        vertexColors
+        size={0.022}
+        transparent
+        opacity={0.28}
+        blending={THREE.AdditiveBlending}
+        depthWrite={false}
+        sizeAttenuation
+        toneMapped={false}
+      />
+    </points>
+  );
+}
+
+function BlackHole({
+  energy,
+  motionScale,
+}: {
+  energy: number;
+  motionScale: number;
+}) {
+  const body = useRef<THREE.Group>(null);
   const rings = useRef<THREE.Group>(null);
+  const glow = useRef<THREE.SpriteMaterial>(null);
+  const light = useRef<THREE.PointLight>(null);
   const glowTexture = useMemo(() => createGlowTexture(), []);
-  useFrame((_, delta) => {
-    if (rings.current) rings.current.rotation.z += delta * 0.055;
+  useFrame(({ clock }, delta) => {
+    const pulse = (Math.sin(clock.elapsedTime * (1.15 + energy * 1.7)) + 1) / 2;
+    if (rings.current)
+      rings.current.rotation.z += delta * (0.055 + energy * 0.11) * motionScale;
+    if (body.current) {
+      const scale = 1 + pulse * 0.012 * motionScale + energy * 0.018;
+      body.current.scale.setScalar(scale);
+    }
+    if (glow.current) glow.current.opacity = 0.2 + pulse * 0.07 + energy * 0.14;
+    if (light.current) light.current.intensity = 44 + pulse * 12 + energy * 28;
   });
   return (
-    <group position={[0, -0.65, 0]}>
+    <group ref={body} position={[0, -0.65, 0]}>
+      <PolarJets motionScale={motionScale} />
       <group ref={rings} rotation={[1.31, 0.08, 0]}>
-        <AccretionDisk />
+        <AccretionDisk energy={energy} motionScale={motionScale} />
+        <AccretionParticles energy={energy} motionScale={motionScale} />
         <mesh>
           <torusGeometry args={[1.08, 0.055, 14, 180]} />
           <meshBasicMaterial
@@ -284,6 +502,7 @@ function BlackHole() {
       </mesh>
       <sprite scale={[4.4, 4.4, 1]}>
         <spriteMaterial
+          ref={glow}
           map={glowTexture}
           color="#d78a2f"
           transparent
@@ -292,7 +511,13 @@ function BlackHole() {
           depthWrite={false}
         />
       </sprite>
-      <pointLight color="#ffb04c" intensity={48} distance={11} decay={2.1} />
+      <pointLight
+        ref={light}
+        color="#ffb04c"
+        intensity={48}
+        distance={11}
+        decay={2.1}
+      />
     </group>
   );
 }
@@ -340,11 +565,18 @@ function createNebulaTexture(seed: string) {
   return texture;
 }
 
-function Nebula() {
+function Nebula({ motionScale }: { motionScale: number }) {
+  const group = useRef<THREE.Group>(null);
   const textureA = useMemo(() => createNebulaTexture("nebula-a"), []);
   const textureB = useMemo(() => createNebulaTexture("nebula-b"), []);
+  useFrame(({ clock }) => {
+    if (!group.current) return;
+    group.current.position.x = Math.sin(clock.elapsedTime * 0.055) * 0.24 * motionScale;
+    group.current.position.y = Math.cos(clock.elapsedTime * 0.043) * 0.16 * motionScale;
+    group.current.rotation.z = Math.sin(clock.elapsedTime * 0.025) * 0.018 * motionScale;
+  });
   return (
-    <group>
+    <group ref={group}>
       <sprite position={[-5.7, -0.8, -6]} scale={[14, 18, 1]}>
         <spriteMaterial
           map={textureA}
@@ -379,7 +611,8 @@ function Nebula() {
   );
 }
 
-function Dust() {
+function Dust({ motionScale }: { motionScale: number }) {
+  const points = useRef<THREE.Points>(null);
   const geometry = useMemo(() => {
     const count = 3600;
     const positions = new Float32Array(count * 3);
@@ -401,8 +634,14 @@ function Dust() {
     output.setAttribute("color", new THREE.BufferAttribute(colors, 3));
     return output;
   }, []);
+  useFrame(({ clock }) => {
+    if (!points.current) return;
+    points.current.rotation.y = clock.elapsedTime * 0.0025 * motionScale;
+    points.current.rotation.z = Math.sin(clock.elapsedTime * 0.04) * 0.012 * motionScale;
+    points.current.position.x = Math.sin(clock.elapsedTime * 0.08) * 0.11 * motionScale;
+  });
   return (
-    <points geometry={geometry}>
+    <points ref={points} geometry={geometry}>
       <pointsMaterial
         vertexColors
         size={0.025}
@@ -415,7 +654,8 @@ function Dust() {
   );
 }
 
-function OrbitalArcs() {
+function OrbitalArcs({ motionScale }: { motionScale: number }) {
+  const group = useRef<THREE.Group>(null);
   const glowTexture = useMemo(() => createGlowTexture(), []);
   const arcs = useMemo(
     () =>
@@ -452,8 +692,14 @@ function OrbitalArcs() {
       }),
     [],
   );
+  useFrame(({ clock }) => {
+    if (!group.current) return;
+    group.current.rotation.z =
+      Math.sin(clock.elapsedTime * 0.075) * 0.026 * motionScale;
+    group.current.position.z = Math.cos(clock.elapsedTime * 0.06) * 0.12 * motionScale;
+  });
   return (
-    <group>
+    <group ref={group}>
       {arcs.map((arc, index) => (
         <group key={index}>
           <primitive object={arc.line} />
@@ -746,6 +992,20 @@ export default function UniverseScene({
   onSelect: (memory: Memory) => void;
 }) {
   const map = useMemo(() => buildNodes(memories), [memories]);
+  const reducedMotion = useReducedMotion();
+  const motionScale = reducedMotion ? 0.08 : 1;
+  const activeEnergy = useMemo(
+    () =>
+      Math.min(
+        1,
+        memories.reduce(
+          (total, memory) =>
+            total + (isSkillMemory(memory) ? skillActivityStrength(memory) : 0),
+          0,
+        ) / 2.5,
+      ),
+    [memories],
+  );
   return (
     <Canvas
       camera={{ position: [0, 0.8, 20.5], fov: 50 }}
@@ -759,10 +1019,10 @@ export default function UniverseScene({
       <color attach="background" args={["#020202"]} />
       <fog attach="fog" args={["#020202", 20, 48]} />
       <ambientLight intensity={0.06} />
-      <Nebula />
-      <Dust />
-      <OrbitalArcs />
-      <BlackHole />
+      <Nebula motionScale={motionScale} />
+      <Dust motionScale={motionScale} />
+      <OrbitalArcs motionScale={motionScale} />
+      <BlackHole energy={activeEnergy} motionScale={motionScale} />
       <MemoryGraph
         nodes={map.nodes}
         clusters={map.clusters}
@@ -776,7 +1036,7 @@ export default function UniverseScene({
         minDistance={9}
         maxDistance={31}
         autoRotate
-        autoRotateSpeed={0.1}
+        autoRotateSpeed={reducedMotion ? 0 : 0.16}
         target={[0, -0.4, 0]}
       />
     </Canvas>
