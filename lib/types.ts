@@ -65,6 +65,76 @@ export interface StudioConnection {
   lastSeenAt: string;
 }
 
+export type StudioBridgePlanStatus =
+  | "preview_ready"
+  | "approved"
+  | "applying"
+  | "verified"
+  | "rolled_back"
+  | "failed";
+
+export type StudioBridgeOperation =
+  | {
+      id: string;
+      kind: "create_folder";
+      parentPath: string;
+      name: string;
+    }
+  | {
+      id: string;
+      kind: "create_script";
+      parentPath: string;
+      name: string;
+      className: "Script" | "LocalScript" | "ModuleScript";
+      source: string;
+    }
+  | {
+      id: string;
+      kind: "set_attribute";
+      targetPath: string;
+      name: string;
+      value: string | number | boolean | null;
+    };
+
+export interface StudioBridgePreviewItem {
+  operationId: string;
+  kind: StudioBridgeOperation["kind"];
+  targetPath: string;
+  summary: string;
+  safe: boolean;
+  reason: string;
+  previous?: { exists: boolean; value?: string | number | boolean };
+}
+
+export interface StudioBridgeRollbackItem {
+  operationId: string;
+  kind: "destroy_created" | "restore_attribute";
+  targetPath: string;
+  attributeName?: string;
+  previous?: { exists: boolean; value?: string | number | boolean };
+  appliedValue?: string | number | boolean | null;
+}
+
+export interface StudioBridgePlan {
+  id: string;
+  projectId?: string;
+  studioId: string;
+  studioName: string;
+  title: string;
+  description: string;
+  status: StudioBridgePlanStatus;
+  operations: StudioBridgeOperation[];
+  preview: StudioBridgePreviewItem[];
+  rollback: StudioBridgeRollbackItem[];
+  verification?: string;
+  error?: string;
+  createdAt: string;
+  updatedAt: string;
+  approvedAt?: string;
+  appliedAt?: string;
+  rolledBackAt?: string;
+}
+
 export interface Task {
   id: string;
   title: string;
@@ -88,10 +158,14 @@ export interface ImportRecord {
 }
 
 export type ActionKind =
-  "create_task" | "create_memory" | "update_project_progress" | "sync_library";
+  | "create_task"
+  | "create_memory"
+  | "update_project_progress"
+  | "sync_library"
+  | "studio_bridge";
 
 export interface ActionProposal {
-  kind: ActionKind;
+  kind: Exclude<ActionKind, "studio_bridge">;
   title: string;
   description: string;
   risk: "low" | "medium";
@@ -251,6 +325,7 @@ export interface StoreData {
   learningRecords?: LearningRecord[];
   skillScores?: SkillScore[];
   agentPlaybooks?: AgentPlaybook[];
+  studioBridgePlans?: StudioBridgePlan[];
   activeProjectId?: string;
   studioConnection?: StudioConnection;
 }

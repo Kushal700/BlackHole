@@ -32,16 +32,23 @@ BlackHole is a private, AI-powered second brain built around a cinematic 3D know
 - Playbook provenance, usage counts, confidence, deletion, and project-scoped semantic matching
 - Roblox Game Dev Pro mode with deterministic specialist routing across 14 disciplines, mandatory architecture/security/QA guardrails, and project-aware craft activation
 - Production-grade Roblox briefs with experience pillars, authority contracts, implementation order, cross-platform acceptance criteria, multiplayer verification ladders, and hard release blockers
+- Roblox Studio Execution Bridge with live Edit-session inspection, read-only dry runs, exact-plan approval, snapshot-drift protection, Studio undo recordings, ownership-scoped rollback, and post-change verification
 
 ## BlackHole Agent
 
 Open `http://localhost:3000/agent` to give BlackHole an objective. The agent recalls local project evidence, chooses relevant skills, presents every step before execution, and waits for approval. Completed runs create an unrated lesson; mark the outcome as worked, partial, or failed to adjust the selected skills' confidence for future runs.
 
-Agent learning is local, inspectable, and reversible. It records evidence and outcomes rather than retraining a hidden model. Similar future objectives retrieve prior project lessons and corrections, while skill ratings provide a bounded ranking signal that never replaces semantic relevance. External publishing, Studio edits, code changes, and destructive actions remain unavailable unless a future integration exposes them through an explicit confirmation gate.
+Agent learning is local, inspectable, and reversible. It records evidence and outcomes rather than retraining a hidden model. Similar future objectives retrieve prior project lessons and corrections, while skill ratings provide a bounded ranking signal that never replaces semantic relevance. External publishing and destructive actions remain unavailable. Studio changes are available only through the separate, confirmation-gated Studio Execution Bridge.
 
 Runs rated as worked or partial can be saved as playbooks. A playbook preserves the run's verified workflow and skill stack, then appears as an explicit reusable workflow when a related objective is planned. Playbooks never bypass the approval gate.
 
 When the active project or objective is Roblox-related, the agent enters Roblox Game Dev Pro mode. Every run is coordinated by the game-direction, strict Luau architecture, networking/security, and QA specialists; UI, VFX, animation, 3D, economy, world, narrative, analytics, accessibility, and Studio-tooling specialists are added when the objective requires them. Approval produces a structured production brief rather than a generic answer, and no plan is considered release-ready while authority, recovery, input parity, readability, or measured performance gates are failing.
+
+## Studio Execution Bridge
+
+Open `http://localhost:3000/studio-bridge` while Roblox Studio is open in Edit mode. The bridge can inspect the connected place, compose an allowlisted batch, and run a read-only dry run. Execution requires a second approval of that exact preview.
+
+Bridge v1 supports creating folders, creating Script/LocalScript/ModuleScript instances, and setting attributes under allowlisted services. Every applied batch uses Roblox Studio's change-history recording, marks created instances with plan ownership, verifies the resulting state, and stores a guarded rollback manifest. It does not accept arbitrary Luau, delete or rename existing instances, publish places, or upload assets.
 
 ## Quick start on Windows
 

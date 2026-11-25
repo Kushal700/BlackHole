@@ -15,6 +15,7 @@ import type {
   LearningRecord,
   AgentOutcome,
   AgentPlaybook,
+  StudioBridgePlan,
 } from "@/lib/types";
 import {
   cosineSimilarity,
@@ -41,6 +42,7 @@ const seed: StoreData = {
   learningRecords: [],
   skillScores: [],
   agentPlaybooks: [],
+  studioBridgePlans: [],
   projects: [
     {
       id: "project-blackhole",
@@ -227,6 +229,7 @@ function hydrate(input: StoreData): StoreData {
     learningRecords: input.learningRecords || [],
     skillScores: input.skillScores || [],
     agentPlaybooks: input.agentPlaybooks || [],
+    studioBridgePlans: input.studioBridgePlans || [],
     memories: input.memories.map((memory) => ({
       ...memory,
       embedding:
@@ -801,6 +804,42 @@ export async function deleteAgentPlaybook(id: string) {
   return true;
 }
 
+export async function createStudioBridgePlan(plan: StudioBridgePlan) {
+  const store = await readStore();
+  store.studioBridgePlans = [plan, ...(store.studioBridgePlans || [])].slice(0, 100);
+  await writeStore(store);
+  return plan;
+}
+
+export async function updateStudioBridgePlan(
+  id: string,
+  patch: Partial<StudioBridgePlan>,
+) {
+  const store = await readStore();
+  const index = (store.studioBridgePlans || []).findIndex((plan) => plan.id === id);
+  if (index < 0) return undefined;
+  const updated: StudioBridgePlan = {
+    ...store.studioBridgePlans![index],
+    ...patch,
+    id,
+    updatedAt: new Date().toISOString(),
+  };
+  store.studioBridgePlans![index] = updated;
+  await writeStore(store);
+  return updated;
+}
+
+export async function deleteStudioBridgePlan(id: string) {
+  const store = await readStore();
+  const before = (store.studioBridgePlans || []).length;
+  store.studioBridgePlans = (store.studioBridgePlans || []).filter(
+    (plan) => plan.id !== id,
+  );
+  if (store.studioBridgePlans.length === before) return false;
+  await writeStore(store);
+  return true;
+}
+
 export async function clearStore() {
   const empty: StoreData = {
     memories: [],
@@ -813,6 +852,7 @@ export async function clearStore() {
     learningRecords: [],
     skillScores: [],
     agentPlaybooks: [],
+    studioBridgePlans: [],
   };
   await writeStore(empty);
 }

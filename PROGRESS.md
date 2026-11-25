@@ -1,6 +1,6 @@
 # BlackHole progress
 
-Last updated: 2026-11-23
+Last updated: 2026-11-24
 
 ## Completed
 
@@ -57,6 +57,10 @@ Last updated: 2026-11-23
 - [x] Structured Roblox production briefs with pillars, authority contracts, implementation order, definitions of done, verification ladders, and release blockers
 - [x] Compact Roblox Pro readiness and per-run specialist routing UI
 - [x] Unit tests for specialist routing, skill activation, and production-brief generation
+- [x] Live Roblox Studio Execution Bridge with Edit-session discovery and read-only place snapshots
+- [x] Allowlisted folder, script, and attribute change composer with dry-run previews and exact two-step approval
+- [x] Snapshot-drift protection, Studio undo recordings, ownership-scoped rollback manifests, and forward/rollback verification
+- [x] Studio bridge audit history and regression tests for path constraints, read-only previews, undo wrapping, and rollback ownership
 - [x] Type check, lint, and production build validation
 
 ## Deliberate deployment follow-ups

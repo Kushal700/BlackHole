@@ -7,6 +7,7 @@ import {
   Atom,
   Bot,
   BrainCircuit,
+  Cable,
   CircleUserRound,
   FolderKanban,
   Import,
@@ -26,6 +27,7 @@ import {
 const navigation = [
   { href: "/", label: "Overview", icon: LayoutDashboard },
   { href: "/cockpit", label: "Project Cockpit", icon: Gauge },
+  { href: "/studio-bridge", label: "Studio Bridge", icon: Cable },
   { href: "/agent", label: "BlackHole Agent", icon: Bot },
   { href: "/universe", label: "Universe", icon: Atom },
   { href: "/memories", label: "Memories", icon: Library },
